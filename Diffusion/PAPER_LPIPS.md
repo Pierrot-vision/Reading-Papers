@@ -1,0 +1,316 @@
+# PAPER_LPIPS — The Unreasonable Effectiveness of Deep Features as a Perceptual Metric
+
+> **한 줄 요약**
+> ImageNet 분류용으로 학습된 딥넷(deep network, 깊은 신경망)의 중간 feature(특징) 거리가,
+> 사람이 느끼는 이미지 유사도를 PSNR·SSIM 같은 고전 지표보다 **압도적으로 잘 맞춘다**.
+> 이 "지각적 유사도(perceptual similarity)"는 좋은 시각 표현이면 자연히 따라오는
+> **창발적(emergent) 성질**이라는 것을 사람 판단 데이터셋으로 증명했다.
+
+---
+
+## 0. 메타 정보
+
+| 항목 | 값 |
+|---|---|
+| 제목 | The Unreasonable Effectiveness of Deep Features as a Perceptual Metric |
+| 저자 | Richard Zhang, Phillip Isola, Alexei A. Efros, Eli Shechtman, Oliver Wang |
+| 발표 | CVPR 2018 |
+| arXiv | [1801.03924](https://arxiv.org/abs/1801.03924) |
+| 공식 코드/데이터 | [github.com/richzhang/PerceptualSimilarity](https://github.com/richzhang/PerceptualSimilarity) (LPIPS 패키지 + BAPPS 데이터셋) |
+| 사용한 backbone(백본) | AlexNet, VGG-16, SqueezeNet (모두 ImageNet 사전학습) + self-supervised/unsupervised 변형들 |
+| 만든 데이터셋 | **BAPPS** (Berkeley-Adobe Perceptual Patch Similarity) — 2AFC + JND |
+| 이 문서가 함께 다루는 응용 | PIERROT/PRX의 perceptual loss(LPIPS + P-DINO) — [[ALG_LPIPS_PDINO]], [[paper-prx]] |
+
+### 이 문서를 정리한 이유 (왜?)
+
+PIERROT/PRX의 24시간 학습 레시피에서 핵심 perceptual loss로 쓰는 **LPIPS의 원논문**이다. ALG_LPIPS_PDINO 문서가 "어떻게 쓰는가(구현)"를 다룬다면, 이 문서는 "왜 그게 작동하는가(원리·근거)"를 다룬다.
+
+---
+
+## 1. 주요 용어 사전 (Glossary)
+
+> **왜?** — 본문에 들어가기 전, 논문 전반에서 반복되는 핵심 용어를 먼저 쉬운 말로 풀어둔다.
+
+### 평가/지표 관련
+
+- **perceptual metric(지각 지표)** — 두 이미지가 **사람 눈에 얼마나 비슷해 보이는지**를 숫자로 재는 척도. 이 논문의 주인공.
+- **PSNR(피크 신호 대 잡음비)** — 픽셀 단위 오차(L2)를 데시벨로 바꾼 고전 화질 지표. 값이 클수록 "수치상" 비슷하지만 사람 지각과 자주 어긋남.
+- **SSIM(구조적 유사도)** — 밝기·대비·구조를 비교하는 고전 지표. PSNR보다 낫지만 여전히 한계.
+- **FSIM / HDR-VDP** — 사람 시각 시스템(HVS) 모델을 손으로 설계한 전통적 지각 지표들. 비교군으로 등장.
+
+### 데이터셋 관련
+
+- **BAPPS** — 저자들이 만든 **사람 판단 데이터셋**. 딥 feature가 정말 사람과 맞는지 채점하는 정답지 역할.
+- **2AFC(둘 중 택일, two-alternative forced choice)** — 기준 이미지(reference)를 주고 "왜곡 A와 왜곡 B 중 어느 쪽이 기준에 더 가까운가?"를 사람에게 강제로 고르게 하는 실험 방식.
+- **JND(겨우 느낄 수 있는 차이, just noticeable difference)** — "이 두 패치가 같아 보이나, 다르게 보이나?"를 물어 지표의 일관성을 교차 검증하는 실험 방식.
+- **patch(패치)** — 이미지의 작은 조각(64×64 등). 전체 이미지가 아니라 패치 단위로 유사도를 평가.
+
+### 네트워크/학습 관련
+
+- **deep feature(딥 feature, 깊은 특징)** — 신경망 중간 layer가 출력하는 활성값(activation). 이 논문은 이 값들 사이의 거리를 지각 지표로 씀.
+- **backbone(백본)** — feature를 뽑는 데 쓰는 기본 신경망(AlexNet/VGG/SqueezeNet).
+- **lin / tune / scratch** — 학습 강도가 다른 세 가지 변형. lin = feature 고정 + 작은 weight만 학습, tune = 전체 미세조정, scratch = 처음부터 학습.
+- **self-supervised / unsupervised(자기지도/비지도)** — 사람이 붙인 정답 없이 학습한 표현. 이런 표현조차 지각 지표로 잘 작동하는지가 핵심 실험 중 하나.
+- **unit-normalize(단위 정규화)** — feature 벡터를 채널 방향으로 길이 1로 맞추는 것. 크기는 버리고 방향(패턴)만 남김.
+
+---
+
+## 2. 논문 요약 (TL;DR)
+
+- **한 줄** — "분류용 딥넷의 feature 거리 = 놀랄 만큼 좋은 지각 지표"이고, 이는 특정 구조·학습법의 마법이 아니라 **좋은 표현의 보편적 부산물**이다.
+- **핵심 문제** — PSNR·SSIM 같은 고전 지표는 사람이 느끼는 유사도와 자주 어긋난다. 특히 1픽셀 shift(이동)·blur(흐림)처럼 사람은 "거의 같다"고 느끼는 변형에 큰 페널티를 준다. "사람과 맞는 지표"가 필요하다.
+- **해결책** — ① 대규모 **사람 판단 데이터셋(BAPPS)**을 만들고, ② 딥넷 feature 거리를 그 데이터로 평가·정렬(calibrate)한다. feature는 고정한 채 layer별 작은 weight만 학습하는 **lin 변형(LPIPS)**이 실용적이면서도 거의 최고 성능.
+- **검증** — 64가지 왜곡 + 5가지 실제 알고리즘 출력(super-resolution, deblurring 등)에 대해, 딥 feature가 모든 고전 지표를 큰 차이로 능가. 심지어 **랜덤 초기화 네트워크**조차 고전 지표보다 나음(단, 학습된 것이 최고).
+
+---
+
+## 3. 핵심 기여 (Contributions)
+
+1. **대규모 지각 판단 데이터셋 BAPPS 공개** — 전통 왜곡뿐 아니라 **CNN이 만든 출력물**(초해상도·디블러·콜로라이즈 결과)까지 포함해, 생성 모델 시대에 맞는 지각 평가 기준을 제공.
+2. **딥 feature 거리가 고전 지표를 압도함을 정량 입증** — PSNR/SSIM/FSIM/HDR-VDP 전부보다 사람과 잘 맞음.
+3. **"아키텍처 무관·학습법 무관" 보편성 발견** — AlexNet/VGG/SqueezeNet 어느 것이든, supervised/self-supervised/심지어 random weight여도 고전 지표보다 나음. → 제목의 "Unreasonable Effectiveness".
+4. **실용적 LPIPS metric(lin 변형) 제안** — feature는 고정, layer별 1×1 weight만 사람 데이터로 학습. 가볍고 plug-in 가능해 이후 생성 모델 학습/평가의 표준 loss가 됨.
+5. **"지각 유사도는 표현의 창발적 성질" 주장** — 분류만 시켰는데 지각 거리가 공짜로 따라온다는 해석.
+
+---
+
+## 4. 주요 알고리즘 설명
+
+> **왜?** — 이 절은 "LPIPS 거리를 실제로 어떤 연산으로 계산하는가"를 한 번에 모아 설명한다. (이후 절·Q&A에서는 이 식을 반복하지 않고 참조만 한다.)
+
+### 4.1 LPIPS 거리 계산 — 5단계
+
+입력은 이미지 두 장 `x`(예측), `x0`(기준). 모든 단계는 frozen(고정) backbone 위에서 일어난다.
+
+```
+1. feature 추출    : 두 이미지를 backbone에 통과 → L개 layer feature 뽑기
+2. unit-normalize  : 각 layer feature를 채널 방향 길이 1로 정규화 (크기 버리고 방향만)
+3. 차이 제곱        : 두 이미지 feature의 (정규화 후) 차이를 제곱
+4. weighted sum    : 사람 점수에 정렬되도록 학습된 1×1 conv weight w로 채널별 가중합
+5. 공간·layer 평균  : 공간 위치와 layer에 대해 평균 → 최종 scalar 거리
+```
+
+수식으로 쓰면 (layer l, 채널 c, 공간 위치 h,w):
+
+$$
+d(x, x_0) = \sum_{l} \frac{1}{H_l W_l} \sum_{h,w} \big\| w_l \odot (\hat{f}^{l}_{hw}(x) - \hat{f}^{l}_{hw}(x_0)) \big\|_2^2
+$$
+
+(즉 진짜로 하는 일은 "두 이미지의 정규화된 feature 벡터를 layer마다 빼서, 학습된 채널 weight로 강조한 뒤, 제곱 거리를 공간·layer 평균"내는 것.)
+
+- `f̂` = unit-normalize된 feature, `w_l` = layer l의 학습된 채널 weight, `⊙` = 채널별 원소곱.
+- **VGG라면 conv1_2, conv2_2, conv3_3, conv4_3, conv5_3 5개 layer**를 쓴다.
+
+### 4.2 세 가지 변형 — lin / tune / scratch
+
+> 학습을 얼마나 시키느냐로 나뉜다. 핵심 결론은 **lin이 가장 실용적**이라는 것.
+
+| 변형 | 무엇을 학습하나 | backbone | 성능 | 비고 |
+|---|---|---|---|---|
+| **lin** (= LPIPS) | layer별 1×1 weight `w_l`만 | **고정(frozen)** | 거의 최고 | 가볍고 plug-in. 실제로 가장 많이 쓰임 |
+| **tune** | backbone 전체 미세조정 | 학습됨 | 약간 더 좋음 | 이득이 작아 비용 대비 불리 |
+| **scratch** | 사람 데이터로 처음부터 | 처음부터 | lin과 비슷 | "사람 데이터만으로도 비슷" → feature가 본질 |
+
+→ **lin이 tune에 거의 근접**한다는 것이 중요한 메시지: 좋은 표현만 있으면 위에 얇은 보정(calibration)만 얹어도 충분하다.
+
+### 4.3 학습 방법 — 사람의 2AFC 판단으로 weight 맞추기
+
+> **왜?** — weight `w_l`을 "무엇에 맞춰" 학습하는지가 LPIPS의 핵심. 정답은 **사람의 선택**이다.
+
+- 작은 네트워크 **G**가 두 거리 `d(x, x0)`, `d(x1, x0)`를 받아 "사람이 어느 쪽을 고를 확률"을 예측.
+- 사람의 실제 2AFC 선택(판단 `h` ∈ {0, 1})과의 **cross-entropy(교차 엔트로피) loss**로 `w_l`(과 lin이 아니면 backbone까지) 학습.
+- 즉 LPIPS의 weight는 "사람이 더 가깝다고 고른 쪽의 거리가 더 작아지도록" 정렬된다.
+
+### 4.4 PIERROT/PRX에서의 사용 (응용 연결)
+
+> **왜?** — 이 논문을 정리한 직접적 이유가 PIERROT의 perceptual loss이므로, 원리가 구현에 어떻게 대응되는지 한 번 짚는다. (상세 구현·수치는 [[ALG_LPIPS_PDINO]] 참조.)
+
+- **frozen + lin 사용** — PIERROT의 `LPIPSLoss`는 `requires_grad=False`로 feature와 weight를 모두 고정하고 4.1의 거리만 빌려 쓴다. = 논문의 **lin 변형을 추론(inference) 모드로** 쓰는 것.
+- **net="vgg" 선택** — 논문이 VGG/AlexNet 둘 다 고전 지표를 능가한다고 했고, VGG가 신호가 더 풍부해 학습 loss로 선호됨.
+- **[-1,1] 입력** — lpips 패키지가 학습 시 쓴 입력 범위. 분포를 맞춰야 feature가 신뢰됨.
+- **resize 0.5** — VGG forward 비용을 ¼로 줄이되, low-level 텍스처 신호는 절반 해상도에서도 충분하다는 판단(논문이 패치 단위로도 잘 됨을 보였기에 정당).
+
+### 4.5 8×8 미니 이미지로 직접 따라가기 (구체 예시)
+
+> **왜?** — 256×256 RGB와 VGG 5 layer는 머릿속으로 따라가기 어렵다. **8×8 이미지 두 장**으로 줄여, LPIPS(와 짝꿍 P-DINO)가 실제로 어떤 숫자를 만드는지 손으로 추적한다. (상세 트레이스 원본은 [[ALG_LPIPS_PDINO]].)
+
+**미니 설정**: batch=1, 이미지 8×8(실제 256×256), 채널 3(0~1), LPIPS resize 0.5→4×4, P-DINO resize 14→patch 1개, lpips_weight=0.1, pdino_weight=0.01.
+
+**두 장의 이미지**: 정답 `x0_gt` = 가운데 흰 사각형, 예측 `x0_pred` = 그 사각형이 **오른쪽 1열만큼 작은** 거의 비슷한 이미지. → "비슷하지만 1픽셀 어긋난" 두 이미지.
+
+#### (a) 먼저 픽셀 MSE
+
+```python
+mse = ((x0_pred - x0_gt) ** 2).mean()
+# 흰 픽셀 3개가 0으로 바뀜: (1-0)² × 3픽셀 × 3채널 = 9
+# 전체 평균: 9 / (8·8·3) = 9 / 192 = 0.047
+```
+→ **MSE = 0.047** ("픽셀 단위로 어긋난 정도").
+
+#### (b) LPIPS 트레이스
+
+```python
+# Step1. resize 0.5 → (1,3,4,4)
+x0_pred = F.interpolate(x0_pred, scale_factor=0.5)
+x0_gt   = F.interpolate(x0_gt,   scale_factor=0.5)
+# Step2. [0,1] → [-1,1]
+self.lpips(x0_pred*2-1, x0_gt*2-1)
+# Step3. VGG conv1_2 feature (1,64,4,4) → 채널 unit-normalize
+#        → (pred-gt)² 합 → 학습된 weight w=0.13 곱 → 공간 평균
+# 결과(가상): lpips_loss ≈ 0.018
+total += 0.1 * 0.018 = 0.0018
+```
+→ **lpips_loss ≈ 0.018**. MSE(0.047)보다 작음 — VGG가 "1px 어긋난 sharp edge"를 사람처럼 "거의 같다"로 평가.
+
+#### (c) P-DINO 트레이스
+
+```python
+# Step1. resize 14 → (1,3,14,14)  (실제는 224 → 16×16=256 patch)
+# Step2. ImageNet 정규화: 0 → -2.12, 1 → 2.25
+# Step3. DINO patch feature (1,1,768), gt는 no_grad
+#        f_pred=[0.31,-0.12,0.87,...], f_gt=[0.30,-0.11,0.88,...] (거의 비슷)
+# Step4. cosine
+cos = F.cosine_similarity(f_pred, f_gt, dim=-1)  # = 0.985 (의미 같음)
+pdino_loss = (1.0 - cos).mean()                  # = 0.015
+total += 0.01 * 0.015 = 0.00015
+```
+→ **pdino_loss ≈ 0.015**. DINO는 "흰 사각형"이라는 의미를 비슷한 벡터로 인코딩 → 1px 어긋남은 의미상 거의 무시.
+
+#### (d) 세 신호 한눈에 (같은 두 이미지)
+
+| 신호 | raw 값 | weight | weighted 기여분 | 직관 |
+|---|---|---|---|---|
+| MSE (픽셀 차이) | 0.047 | 1.0 | 0.047 | "어긋난 픽셀 9개!" (큰 페널티) |
+| LPIPS (텍스처 차이) | 0.018 | 0.1 | 0.0018 | "edge가 1px 옆이지만 텍스처는 같아" (중간) |
+| P-DINO (의미 차이) | 0.015 | 0.01 | 0.00015 | "흰 사각형 의미는 같아 (cos 0.985)" (작음) |
+| **total** | — | — | **0.0490** | MSE 지배적, 둘은 보조 |
+
+→ 세 신호의 **감수성(sensitivity) 추상화 수준이 다르다** — 이게 셋을 합치는 이유. 학습이 진행돼 MSE가 0.005로 작아지면 LPIPS·P-DINO 비중이 커져 "픽셀은 맞췄지만 텍스처/의미가 어긋남"을 잡는다.
+
+#### (e) 대조 — pred가 흰 사각형이 아니라 **검은** 사각형이라면
+
+| 신호 | raw 값 | 직관 |
+|---|---|---|
+| MSE | 0.094 | 어긋난 픽셀이 더 많음 |
+| LPIPS | 0.31 | "edge 색반전" — VGG가 큰 차이로 봄 |
+| P-DINO | 0.78 | "흰 vs 검은 사각형" — 의미 다름 (cos 0.22) |
+
+→ 셋 다 큰 값. 픽셀은 비슷한데 의미가 어긋난 경우는 P-DINO가, 미세 텍스처는 LPIPS가 잡는다.
+
+### 4.6 실제 해상도 수치 예시
+
+> **왜?** — 미니 예제를 실제 256×256로 스케일업하면 layer별 weight·patch 수가 어떤 숫자가 되는지 본다.
+
+#### LPIPS — VGG 5 layer weighted sum (resize 후 128×128 가정)
+
+| layer | shape | unit-norm 후 (pred-gt)² | 학습된 weight |
+|---|---|---|---|
+| conv1_2 | (1,64,128,128) | 0.012 | 0.13 |
+| conv2_2 | (1,128,64,64) | 0.018 | 0.18 |
+| conv3_3 | (1,256,32,32) | 0.025 | 0.25 |
+| conv4_3 | (1,512,16,16) | 0.032 | 0.30 |
+| conv5_3 | (1,512,8,8) | 0.041 | 0.14 |
+
+→ weighted sum = 0.012·0.13 + 0.018·0.18 + 0.025·0.25 + 0.032·0.30 + 0.041·0.14 ≈ **0.026**. ×0.1 → total에 0.0026 추가.
+
+#### P-DINO — patch cosine 수렴 (224→16×16=256 patch, dim 768)
+
+| step | mean(cos) | (1 - mean(cos)) | × 0.01 weight |
+|---|---|---|---|
+| 0 | 0.05 | 0.95 | 0.0095 |
+| 5k | 0.42 | 0.58 | 0.0058 |
+| 50k | 0.81 | 0.19 | 0.0019 |
+| 100k | 0.91 | 0.09 | 0.0009 |
+
+→ cosine이 1에 가까워질수록 loss가 0으로 수렴.
+
+#### weight 비율 — 왜 LPIPS 0.1, P-DINO 0.01
+
+| loss | raw scale | weight | 실효 기여분 |
+|---|---|---|---|
+| MSE | 0.01 ~ 0.1 (latent 공간) | 1.0 | 0.01 ~ 0.1 |
+| LPIPS | 0.01 ~ 0.05 | 0.1 | 0.001 ~ 0.005 |
+| P-DINO | 0.5 ~ 0.9 (1-cos) | 0.01 | 0.005 ~ 0.009 |
+
+→ 세 신호의 실효 기여분이 비슷한 자릿수가 되도록 weight 조정. P-DINO는 raw 값이 크므로 weight가 작다.
+
+---
+
+## 5. 실험 요약
+
+> **왜?** — "딥 feature가 정말 사람과 맞는가"를 숫자로 확인하는 절. (메커니즘은 4장, 해석은 6장 Q&A로 분리.)
+
+### 5.1 어떤 왜곡/출력으로 평가했나
+
+| 종류 | 내용 |
+|---|---|
+| **전통 왜곡** | blur, noise, JPEG 압축, color shift, 기하 변형 등 (총 ~64종, 조합 포함) |
+| **CNN 기반 왜곡** | autoencoder, denoising/colorization/super-resolution 네트워크의 출력 |
+| **실제 알고리즘 출력** | super-resolution / frame interpolation / deblurring 등 실제 task의 결과물 (분포 밖 일반화 검증) |
+
+### 5.2 핵심 결과 (경향)
+
+| 지표 | 사람과의 정합도 (2AFC) | 비고 |
+|---|---|---|
+| L2 / PSNR | 낮음 | 픽셀 오차만 봄 |
+| SSIM / FSIM | 중간 | 전통 지표 중 나은 편이나 한계 |
+| **딥 feature (random weight)** | PSNR/SSIM보다 높음 | 학습 안 해도 구조 자체가 도움 |
+| **딥 feature (self-supervised)** | 더 높음 | 정답 라벨 없이 학습한 표현도 잘 됨 |
+| **LPIPS (lin, supervised)** | **최고** | 사람 데이터로 보정한 버전 |
+
+→ 세 줄 결론:
+1. **모든 딥 feature가 모든 고전 지표를 능가**.
+2. **아키텍처·학습법이 달라도 경향은 유지**(보편성).
+3. **사람 데이터로 보정한 lin(LPIPS)이 최고**지만, tune과의 격차는 작다.
+
+---
+
+## 6. 💬 Q&A 섹션
+
+> 대화 중 나온 질문들을 자기 완결적으로 정리. (수식·구현 세부는 4장 참조.)
+
+### Q1. 제목의 "Unreasonable Effectiveness(불합리할 정도의 효과)"가 정확히 무슨 뜻?
+
+분류(ImageNet)만 시킨 네트워크에게 "지각 유사도를 재라"고 따로 가르친 적이 없는데, 그 중간 feature 거리가 사람 판단과 잘 맞더라는 것. 즉 **공짜로 따라온 능력**이 너무 좋아서 "불합리할 정도"라고 표현. → 저자 해석: 지각 유사도는 좋은 시각 표현의 **창발적(emergent) 성질**.
+
+### Q2. 왜 PSNR/SSIM으로는 부족한가?
+
+| 지표 | 잡는 것 | 한계 |
+|---|---|---|
+| PSNR(L2) | 픽셀 색·밝기 절대 차이 | 1픽셀 shift된 텍스처에 큰 페널티 — 사람은 같다고 느낌 |
+| SSIM | 밝기·대비·구조 | 특정 왜곡(blur 등)에 편향, 여전히 사람과 어긋남 |
+| LPIPS | 딥 feature 패턴 거리 | shift·작은 변형에 강함, 텍스처/디테일까지 반영 |
+
+### Q3. lin / tune / scratch 중 뭘 써야 하나?
+
+**lin (= LPIPS)**. 4.2 표대로 tune이 살짝 낫지만 격차가 작고, lin은 backbone을 고정해 가볍고 안정적이다. 실제 생성 모델 학습 loss로 표준이 된 것도 lin이다.
+
+### Q4. 랜덤 가중치 네트워크도 고전 지표보다 낫다는 게 말이 되나?
+
+된다. CNN의 **구조 자체**(지역적 conv + 다층 + 공간 풀링)가 이미 "사람이 신경 쓰는 패턴"을 어느 정도 포착하도록 만든다. 학습은 이를 더 다듬을 뿐. 단 random < self-supervised < supervised 순으로 좋아진다.
+
+### Q5. LPIPS와 P-DINO(DINOv2 cosine)는 무슨 관계?
+
+같은 원리("딥 feature 거리 = 지각 지표")의 **두 적용**이다.
+- **LPIPS** = VGG의 low-level feature + 학습된 weight L2 → **텍스처·디테일**.
+- **P-DINO** = DINOv2의 high-level patch feature + cosine → **의미·구도**.
+LPIPS 논문이 "VGG로도 된다"를 보였으니, "더 좋은 표현(DINO)이면 더 좋은 의미 지표"라는 자연스러운 후속이 P-DINO다. 거리 방식만 다름(weighted L2 vs cosine). 상세는 [[ALG_LPIPS_PDINO]].
+
+### Q6. BAPPS의 2AFC와 JND는 왜 둘 다 만들었나?
+
+- **2AFC** — "둘 중 더 가까운 것"을 강제로 고르게 해 지표를 **정렬(보정)**하는 주 학습 신호.
+- **JND** — "같아 보이나"를 물어 2AFC로 맞춘 지표가 **일관적인지 교차 검증**. 두 실험이 같은 방향을 가리키면 신뢰도가 올라간다.
+
+---
+
+## 7. 한 줄 요약 (전체)
+
+> **LPIPS는 "ImageNet 분류용 딥넷의 feature 거리가 PSNR·SSIM보다 사람 지각을 압도적으로 잘 맞춘다"를 사람 판단 데이터셋(BAPPS)으로 증명하고, feature는 고정한 채 layer별 weight만 사람 데이터로 보정한 lin 변형을 실용 지표로 제안한 논문이다.** 이 "지각 유사도는 좋은 표현의 창발적 부산물"이라는 발견이, 이후 생성 모델 학습에서 LPIPS·P-DINO 같은 perceptual loss가 표준이 된 출발점이다.
+
+---
+
+## 8. 관련 메모리·문서 링크
+
+- [[ALG_LPIPS_PDINO]] — PIERROT/PRX에서 LPIPS + P-DINO를 실제로 구현·합산하는 방법 (8×8 미니 트레이스, 수치 예시, train.py 통합)
+- [[paper-prx]] — LPIPS/P-DINO를 24시간 레시피의 핵심 perceptual 축으로 쓰는 PRX
+- [[paper-ddt]], [[paper-pixeldit]] — REPA 등 "외부 표현 정렬" 계열과의 비교 관점 (feature 거리로 의미를 정렬한다는 공통 아이디어)
