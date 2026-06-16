@@ -8,6 +8,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 26 | [EMA: Exponential Moving Average of Model Weights (Algorithm Reference)](Diffusion/PAPER_EMA.md) | Algorithm Ref | [ddpm](https://arxiv.org/abs/2006.11239) | - | 2026-06-16 |
 | 25 | [LPIPS: The Unreasonable Effectiveness of Deep Features as a Perceptual Metric](Diffusion/PAPER_LPIPS.md) | CVPR 2018 | [arxiv](https://arxiv.org/abs/1801.03924) | [github](https://github.com/richzhang/PerceptualSimilarity) | 2026-06-16 |
 | 24 | [PRX (Photoroom eXperimental) — Open-source T2I Research](Diffusion/PAPER_PRX.md) | HF Blog 2026 | [blog](https://huggingface.co/blog/Photoroom/prx-open-source-t2i-model) | [github](https://github.com/Photoroom/PRX) | 2026-06-12 |
 | 23 | [Tstars-Tryon 1.0: Industrial-Grade Virtual Try-On](Diffusion/PAPER_Tstars-Tryon.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2604.19748) | - | 2026-06-15 |
