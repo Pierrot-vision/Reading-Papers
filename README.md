@@ -8,13 +8,14 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 25 | [LPIPS: The Unreasonable Effectiveness of Deep Features as a Perceptual Metric](Diffusion/PAPER_LPIPS.md) | CVPR 2018 | [arxiv](https://arxiv.org/abs/1801.03924) | [github](https://github.com/richzhang/PerceptualSimilarity) | 2026-06-16 |
 | 24 | [PRX (Photoroom eXperimental) — Open-source T2I Research](Diffusion/PAPER_PRX.md) | HF Blog 2026 | [blog](https://huggingface.co/blog/Photoroom/prx-open-source-t2i-model) | [github](https://github.com/Photoroom/PRX) | 2026-06-12 |
 | 23 | [Tstars-Tryon 1.0: Industrial-Grade Virtual Try-On](Diffusion/PAPER_Tstars-Tryon.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2604.19748) | - | 2026-06-15 |
 | 22 | [DDT: Decoupled Diffusion Transformer](Diffusion/PAPER_DDT.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2504.05741) | [github](https://github.com/MCG-NJU/DDT) | 2026-06-10 |
 | 21 | [FireRed-Image-Edit-1.0 Technical Report](Diffusion/PAPER_FireRed-Image-Edit.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2602.13344) | [github](https://github.com/FireRedTeam/FireRed-Image-Edit) | 2026-06-10 |
 | 20 | [PixelDiT: Towards Pixel-Space Image Generation via Single-Stage Diffusion Transformer](Diffusion/PAPER_PixelDiT.md) | CVPR 2026 | [arxiv](https://arxiv.org/abs/2511.20645) | [github](https://github.com/NVlabs/PixelDiT) | 2026-06-10 |
 | 19 | [Qwen-Image-2.0 Technical Report](Diffusion/PAPER_Qwen-Image-2.0.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.10730) | [github](https://github.com/QwenLM/Qwen-Image) | 2026-06-04 |
-| 18 | [Qwen-Image Technical Report](Diffusion/PAPER_Qwen-Image.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2508.02324) | [github](https://github.com/QwenLM/Qwen-Image) | 2026-06-04 |
+| 18 | [Qwen-Image Technical Report](Diffusion/PAPER_Qwen-Image.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2508.02324) | [github](https://github.com/QwenLM/Qwen-Image) | 2026-06-16 |
 | 17 | [Nucleus-Image: Sparse MoE for Image Generation](Diffusion/PAPER_Nucleus-Image.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2604.12163) | - | 2026-06-02 |
 | 16 | [PiD: Fast and High-Resolution Latent Decoding with Pixel Diffusion](Diffusion/PAPER_PiD.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.23902) | [github](https://github.com/nv-tlabs/PiD) | 2026-06-02 |
 | 15 | [Lumina-Image 2.0: A Unified and Efficient Image Generative Model](Diffusion/PAPER_Lumina-Image-2.0.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2503.21758) | [github](https://github.com/Alpha-VLLM/Lumina-Image-2.0) | 2026-05-29 |
