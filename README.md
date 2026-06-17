@@ -8,6 +8,8 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 28 | [TREAD: Token Routing for Efficient Architecture-agnostic Diffusion Training](Diffusion/PAPER_TREAD.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2501.04765) | - | 2026-06-17 |
+| 27 | [REPA: Representation Alignment for Generation](Diffusion/PAPER_REPA.md) | ICLR 2025 (Oral) | [arxiv](https://arxiv.org/abs/2410.06940) | [github](https://github.com/sihyun-yu/REPA) | 2026-06-17 |
 | 26 | [EMA: Exponential Moving Average of Model Weights (Algorithm Reference)](Diffusion/PAPER_EMA.md) | Algorithm Ref | [ddpm](https://arxiv.org/abs/2006.11239) | - | 2026-06-16 |
 | 25 | [LPIPS: The Unreasonable Effectiveness of Deep Features as a Perceptual Metric](Diffusion/PAPER_LPIPS.md) | CVPR 2018 | [arxiv](https://arxiv.org/abs/1801.03924) | [github](https://github.com/richzhang/PerceptualSimilarity) | 2026-06-16 |
 | 24 | [PRX (Photoroom eXperimental) — Open-source T2I Research](Diffusion/PAPER_PRX.md) | HF Blog 2026 | [blog](https://huggingface.co/blog/Photoroom/prx-open-source-t2i-model) | [github](https://github.com/Photoroom/PRX) | 2026-06-12 |
