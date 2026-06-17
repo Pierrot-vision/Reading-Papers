@@ -23,14 +23,14 @@
 - **SigLIP2**: 이미지-텍스트 contrastive(대조 학습)로 정렬된 비전 인코더. "이건 얼굴, 저건 하늘" 식의 의미 정렬된 표현을 만듦. TUNA-2의 비교군.
 - **VAE (variational autoencoder, 변분 오토인코더)**: 이미지를 작은 잠재(latent)로 압축(encode)했다가 복원(decode)하는 모듈. latent diffusion(잠재 확산)의 1단계.
 - **SimplePatchEmbedding(단순 패치 임베딩)**: TUNA-2의 비전 입력단. `Conv2d(3→3584, kernel=16, stride=16) + RMSNorm` 단 한 줄. 비전 인코더 전체를 이 2.76M 파라미터짜리 Conv 하나로 대체.
-- **diffusion head(디퓨전 헤드)**: LLM 본체 위에 얹은 16-layer DiT(adaLN modulation). 노이즈 낀 이미지를 받아 클린 이미지를 회귀하는 생성 전담부.
+- **diffusion head(디퓨전 헤드)**: LLM 본체 위에 얹은 16-layer DiT(adaLN modulation). 노이즈 낀 이미지를 받아 클린 이미지를 회귀하는 생성 전담부. 본체와 같은 폭(hidden 3584·intermediate 18944)이라 **약 5B**에 달함(아래 모델 크기 표) — "얇은 헤드"가 아님.
 - **encoder-free(인코더 없는)**: 비전 인코더를 두지 않고 raw RGB 픽셀을 LLM에 직접 흘리는 설계. TUNA-2(variant C)의 정체성.
 
 ### 핵심 개념
 - **native(네이티브) 처리**: 이미지를 인코더로 추상화하지 않고, raw RGB 패치를 LLM 토큰으로 그대로 넣어 7B 파라미터가 "의미 추출"까지 직접 배우게 하는 것.
 - **JiT (Just-image-Transformer) x0-prediction(클린 픽셀 직접 예측)**: 노이즈에서 클린 이미지로 가는 방향(velocity)을 맞추는 대신, **클린 이미지 x0 자체를 직접 회귀**하는 학습 타깃. 픽셀 공간에서 분산 폭주를 피함.
 - **velocity prediction(속도 예측)**: rectified flow(직선 흐름)의 표준 타깃. `noise_scale·ε − x0` 방향을 맞춤. 픽셀 공간에선 noise_scale에 비례해 분산이 커지는 약점.
-- **JiTNoiseScheduler**: timestep을 lognormal(P_mean=−0.8)로 뽑아 **작은 t(노이즈 적은 구간, 디테일 학습)** 를 더 자주 보게 하는 노이즈 스케줄러.
+- **JiTNoiseScheduler**: timestep을 `t=sigmoid(N(−0.8, 0.8))`(median≈0.31)로 뽑는 노이즈 스케줄러. 코드 표기는 **t=1이 클린**이라, t를 낮게 치우치게 = **고노이즈 입력을 더 자주** 학습(§4).
 - **DeTok-style mask token(마스크 토큰)**: 학습 중 일부 패치를 학습 가능한 mask 벡터로 무작위 치환하는 정규화. TUNA-2는 음수 min ratio 트릭으로 70% 샘플은 마스킹을 아예 스킵.
 - **block-diagonal attention(블록 대각 어텐션)**: 한 시퀀스 안에서 텍스트 영역은 causal(앞쪽만 보기), 이미지 영역은 bidirectional(양쪽 보기)로 묶는 마스크.
 
@@ -113,6 +113,92 @@ logits(NTP)     last_hidden (B, L, 3584)                                   │
 
 핵심: 512² 이미지 → **1024 토큰(32×32 패치)**. 세 변종 모두 토큰 수는 같다. 다른 건 **"각 토큰이 무엇을 담는가"** — 인코더 변종은 의미 정렬된 압축 표현, encoder-free는 raw RGB 패치 그대로.
 
+#### 코드 기반 호출 트레이스 — 학습 1 step (variant C)
+
+*왜 두나: 위 다이어그램은 개념도다. 실제 공개 코드([facebookresearch/tuna-2](https://github.com/facebookresearch/tuna-2))의 함수 호출 순서를 그대로 따라가면, "노이즈를 어디서 입히고 / 패치 임베딩이 어디서 일어나고 / loss가 어떻게 합쳐지는지"가 정확히 보인다. 파일·줄은 클론한 레포 기준.*
+
+```
+① TunaModelWrapper.forward(batch)                    [tuna_2_pixel.py#L826]
+   │
+   ├─ prepare_latents_and_labels(pixel_values, ...)  [_wrapper_base.py#L98]   ★노이즈 입히는 곳
+   │    └─ JiT noising (jit_utils.py#L46-L61):
+   │         t  = sigmoid(randn·0.8 + (−0.8))         # median t ≈ 0.31
+   │         ε  = randn × noise_scale(=2.0)
+   │         z_t = t·x0 + (1−t)·ε                     # ★t=1이 클린, t=0이 노이즈
+   │       반환: (xt=z_t, t, x0_clean, masks)
+   │
+   ├─ create_attention_mask(...)                     [_wrapper_base.py#L52]   omni block 마스크
+   │    └─ text=causal, 각 이미지 내부=bidirectional
+   │
+   └─ tuna_model(text_tokens, image_latents=xt, t, attention_mask, ...)       [→ ②]
+
+② Tuna2PixelModel.forward(...)                        [tuna_2_pixel.py#L190]
+   │
+   ├─ input_embeds = embed_tokens(text_tokens)        [L216]   텍스트 ID→벡터(3584)
+   │
+   ├─ _prepare_embeds(image_latents=xt, t)            [L375]
+   │    ├─ image_embeds = SimplePatchEmbedding(xt)    [patch_embed.py#L46]
+   │    │      Conv2d(3→3584,k16,s16) → reshape → RMSNorm   (B,1024,3584)
+   │    ├─ (training) DeTok mask token 적용           [L398-L415]
+   │    ├─ time_embeds = TimestepEmbedder(t)          [L417]
+   │    └─ rope_3d = build_rope([T,h,w], p=16, head=64) [L382]
+   │
+   ├─ _prepare_input(...)                             [_inner_base.py#L79]
+   │    └─ <BOI><time><img×1024><EOI> 슬롯에 image_embeds 삽입 → input_embeds (B,L,3584)
+   │
+   ├─ outputs = self.tuna(inputs_embeds, attention_mask)   [L274]  ★Qwen2.5-7B 28층
+   │    └─ logits, last_hidden = outputs               [L281]
+   │
+   ├─ for layer in diffusion_head_a (16×):            [L289-L312]  ★생성 본체 16층 DiT
+   │    last_hidden = ModulatedAttentionBlock(
+   │        last_hidden, adaln_input=time_embeds, rope_3d, diffhead_mask)
+   │
+   ├─ x0_pred = diffusion_head_b(last_hidden, time_embeds)  [L317]  FinalLayer→unpatchify→픽셀
+   │
+   ├─ loss_ntp  = next_token_prediction(logits, text_labels)        [L327]
+   └─ loss_flow = jit_x0_prediction_loss(x0_pred, x0_target, t, masks) [L335]
+                  └─ "Predict x0 directly - JiT style" (x0 직접 회귀)
+
+③ total_loss = flow_coeff·loss_flow + ntp_coeff·loss_ntp           [L888]
+```
+
+**읽는 포인트 3가지**:
+- **노이즈는 ①에서 한 번** 입힌다(`z_t = t·x0 + (1−t)·noise_scale·ε`). 코드 표기는 **t=1이 클린**(내 §3·§4 초판은 반대로 적었음 — 아래 정정).
+- **패치 임베딩(Conv2d)은 ②의 `_prepare_embeds` 안**에서만 일어난다 — 비전 인코더가 없으니 이게 비전 입력의 전부.
+- **time_embeds는 두 곳에 쓰인다**: ②의 LLM 시퀀스 슬롯(`_prepare_input`)과 16층 head의 adaLN(`adaln_input`). head의 의미 조건은 LLM hidden에서 오고, head adaLN은 timestep만 받는다.
+
+#### 모델 크기 — "7B"는 백본만, 전체는 ≈ 12.7B
+
+*왜 짚나: 모델명의 "7B"는 LLM 백본 크기일 뿐이고, 실제 학습되는 전체 네트워크는 그 1.7배다. 특히 diffusion head가 "얇은 출력부"가 아니라는 점이 중요.*
+
+공개 코드([facebookresearch/tuna-2](https://github.com/facebookresearch/tuna-2), `configs/model/tuna_2_pixel_7b.yaml` + 모델 정의)를 직접 빌드해 카운트한 값:
+
+| 구성 | 파라미터 | 비고 |
+|---|---|---|
+| Qwen2.5-7B-Instruct 백본 | **7.615B** | 28층, hidden 3584 |
+| diffusion head (16 × `ModulatedAttentionBlock`) | **5.006B** | hidden 3584 · intermediate **18944**(=Qwen 풀 폭) · 층마다 adaLN(`Linear 3584→6×3584`, 층당 77M) |
+| FinalLayer + TimestepEmbedder | 0.042B | |
+| SimplePatchEmbedding(Conv2d) | 0.0028B | 사실상 무시 |
+| **합계** | **≈ 12.67B** | |
+
+→ diffusion head는 **본체와 같은 폭의 DiT를 16층 통째로 얹은 ~5B급 모듈**이다. "hidden→픽셀 떨구는 얇은 마무리부"라는 인상과 달리, 생성의 상당 부분을 책임지는 무거운 헤드다. (단 공개 weight는 production 전체가 아니라 백본·헤드에서 일부 층을 덜어낸 "foundation checkpoint"만 배포 예정 — `README.md`.)
+
+#### 변종별 전체 크기 비교 — "인코더 제거"의 실제 절감은 작다
+
+*왜 짚나: 세 변종(A/B/C)은 config상 **백본·diffusion head가 완전히 동일**(`flow_head_num: 16`, share_adaln 없음)하고 **비전 입력 스택만** 다르다. 그래서 변종 간 파라미터 차이는 곧 "인코더 스택의 무게"다.*
+
+공유 코어(세 변종 동일): Qwen2.5-7B 7.615B + 16층 head 5.006B + FinalLayer/Timestep 0.042B = **약 12.66B**.
+
+| 변종 | 비전 입력 스택(추가분) | 동결 | 전체 ≈ |
+|---|---|---|---|
+| **A. Tuna** | SigLIP2 ~0.41B + WAN2.2 VAE(~0.1–0.3B급*) + siglip_proj 0.017B | VAE 동결(`frozen_params:['vae']`) | **~13.3B** |
+| **B. Tuna-R** | SigLIP2 ~0.41B + siglip_proj 0.017B | — | **~13.1B** |
+| **C. Tuna-2** | Conv2d 0.0028B | — | **~12.67B** |
+
+(SigLIP2-so400m: hidden 1152·27층 ≈ 0.41B, config에서 직접 카운트. *WAN2.2 VAE는 5B T2V 모델의 VAE 부분만 사용·동결 — 정확 수치는 미확인 근사.)
+
+→ **핵심 통찰**: 인코더를 떼어내도 전체에서 줄어드는 건 **~0.4~0.7B(전체의 3~5%)** 뿐이다. 즉 TUNA-2의 이득은 **파라미터 절감이 아니라 "표현 천장(representation ceiling) 제거"** 다 — 이 점이 논문 메시지를 정확히 읽는 열쇠. (인코더가 무거워서 빼는 게 아니라, 인코더의 lossy 압축이 scale에서 손해라서 뺀다.)
+
 ---
 
 ### 1️⃣ SimplePatchEmbedding — 인코더 자리를 Conv2d 한 줄로
@@ -167,17 +253,18 @@ logits(NTP)     last_hidden (B, L, 3584)                                   │
 
 **학습 절차** ([jit_utils.py](https://github.com/facebookresearch/tuna-2)):
 ```
-x0 : 클린 픽셀,  ε ~ N(0,I),  t ~ lognormal(P_mean=-0.8, P_std=0.8)→[0,1],  noise_scale=2.0
-x_t      = (1-t)·x0 + t·noise_scale·ε        ← 직선 보간(linear interpolation)
-x0_pred  = model(x_t, t)                     ← ★ 클린 픽셀 직접 예측
-loss_flow = MSE(x0_pred, x0)·w(t)            ← w(t)는 SNR 함수
+x0 : 클린 픽셀,  ε ~ N(0,I),  t = sigmoid(N(P_mean=-0.8, P_std=0.8)),  noise_scale=2.0
+z_t      = t·x0 + (1-t)·noise_scale·ε        ← ★코드 표기: t=1이 클린, t=0이 노이즈 (jit_utils.py#L55-L61)
+x0_pred  = model(z_t, t)                     ← ★ 클린 픽셀 직접 예측
+loss_flow = jit_x0_prediction_loss(x0_pred, x0)   ← weighted MSE
 loss_ntp  = CE(logits, text_labels)          ← 이해 쪽
 ```
+> ⚠️ 표기 주의: 이 레포의 t는 **t=1이 클린**(rectified flow의 "cleanness 비율"). 일반 diffusion 문헌의 "t=0 클린" 표기와 방향이 반대다. 이 문서 초판이 `x_t=(1-t)·x0+t·ε`로 적었던 건 후자 표기였고, **코드 기준은 위 식이 맞다.**
 
-**왜 픽셀에서 x0이 안정한가** (수치 예시, x0=0.5, ε=0.3, t=0.5):
+**왜 픽셀에서 x0이 안정한가** (velocity 정의 `v=(x0−z_t)/(1−t)=x0−noise_scale·ε`, 수치 예시 x0=0.5, ε=0.3):
 ```
-noise_scale=2.0 → velocity = 2.0·0.3 - 0.5 = 0.10,   x0 타깃 = 0.5
-noise_scale=5.0 → velocity = 5.0·0.3 - 0.5 = 1.00 (진폭 10배),   x0 타깃 = 0.5 (불변)
+noise_scale=2.0 → |velocity| = |0.5 - 2.0·0.3| = 0.10,   x0 타깃 = 0.5
+noise_scale=5.0 → |velocity| = |0.5 - 5.0·0.3| = 1.00 (진폭 10배),   x0 타깃 = 0.5 (불변)
 ```
 → noise_scale를 키우면 velocity 분산이 직격당하지만 x0 타깃은 그대로. TUNA-2가 noise_scale=2.0으로 노이즈를 키운 것도 x0-prediction이라 가능한 선택.
 
@@ -187,23 +274,27 @@ noise_scale=5.0 → velocity = 5.0·0.3 - 0.5 = 1.00 (진폭 10배),   x0 타깃
 | noise(ε) | △ t≈1 불안정 | △ 50+ step | △ |
 | **x0 (JiT)** | **매우 좋음** | **큰 보폭 안전** | **✅ 자연스러움** |
 
+> ⚠️ **코드 확인 메모**: config(`tuna_2_pixel_7b.yaml`)에는 `prediction: "velocity"`로 적혀 있지만, 이건 **transport/sampler용 API-compat 설정**(추론 ODE 적분용)이다. **실제 학습 loss는 `jit_x0_prediction_loss`** — 디퓨전 헤드가 x0(클린 픽셀)를 직접 예측한다([tuna_2_pixel.py#L316-L337](https://github.com/facebookresearch/tuna-2): *"Predict x0 (clean image) directly - JiT style"*). 즉 학습 타깃은 x0, config의 velocity 필드와 혼동 금지.
+
 > **한 줄**: JiT x0-prediction = "클린 픽셀 직접 회귀로 픽셀 공간의 velocity 분산 폭주 회피".
 
 ---
 
-### 4️⃣ JiTNoiseScheduler — lognormal로 디테일 구간을 더 자주
+### 4️⃣ JiTNoiseScheduler — 로지스틱-정규 t로 고노이즈 구간을 더 자주
 
-*왜 이렇게 뽑나: 인코더 없이 디테일을 직접 배워야 하므로, 노이즈가 적어 디테일이 보이는 작은 t 구간을 더 자주 학습시킨다.*
+*왜 이렇게 뽑나: 모든 노이즈 단계를 균등하게 보는 대신, 학습이 어려운 구간에 표본을 몰아준다. 이 레포의 표기(t=1 클린)에서는 그 구간이 "작은 t = 노이즈 많은 쪽"이다.*
 
-**비유**: uniform t = 셔터 속도를 골고루 샘플링. lognormal(P_mean=−0.8) = "빠른 셔터(작은 t, 노이즈 적음)"를 더 자주 — 디테일 학습 강조.
+**비유**: uniform t = 셔터를 골고루 샘플링. 이 스케줄러 = 특정 노이즈 대역에 표본을 몰아주는 가중 샘플링.
 
 ```
 self.jit_noise_scheduler = JiTNoiseScheduler(P_mean=-0.8, P_std=0.8, noise_scale=2.0, t_eps=5e-2)
-[샘플링]  σ = exp(randn·P_std + P_mean);  t = σ/(1+σ);  t = clamp(t, t_eps, 1-t_eps)
+[샘플링, jit_utils.py#L46-L48]  t = sigmoid(randn·P_std + P_mean)   # = σ/(1+σ), σ=exp(z)
 ```
-P_mean=−0.8이면 mode가 t≈0.31 부근으로 작은 t 쪽으로 치우침 → x_t가 거의 클린 → 디테일 회귀에 집중.
+P_mean=−0.8 → median t ≈ sigmoid(−0.8) ≈ **0.31**. 코드 표기에서 t=1이 클린·t=0이 노이즈이므로, **t를 0.31 부근으로 낮게 치우치게 = 더 노이즈 많은 입력(z_t)을 더 자주** 보여준다. 즉 x0를 무거운 노이즈에서 복원하는 연습을 강조 → 거친 구조 복원 쪽에 무게.
 
-> **한 줄**: JiTNoiseScheduler = "lognormal P_mean=−0.8로 디테일 학습 구간을 더 자주 샘플링".
+> ⚠️ 정정: 초판은 "작은 t = 거의 클린 = 디테일 학습"으로 적었으나, 이는 t=0 클린 표기를 가정한 오류다. **코드 표기(t=1 클린)에서 작은 t는 고노이즈** 구간이다.
+
+> **한 줄**: JiTNoiseScheduler = "median t≈0.31로 고노이즈 입력을 더 자주 샘플링해 x0 복원 난이도를 의도적으로 높임".
 
 ---
 
@@ -241,8 +332,10 @@ for b in range(B):
 | 변종 | 비전 입력 | 디퓨전 타깃 | 손실 |
 |---|---|---|---|
 | **A. Tuna** | RGB → WAN2.2 VAE → SigLIP2 | VAE latent | velocity (rectified flow) |
-| **B. Tuna-R** | RGB → SigLIP2 (26층) | 픽셀 3ch | JiT x0-prediction |
+| **B. Tuna-R** | RGB → SigLIP2 (27층) | 픽셀 3ch | JiT x0-prediction |
 | **C. Tuna-2** | RGB → Conv2d(3→3584) + RMSNorm | 픽셀 3ch | JiT x0-prediction |
+
+세 변종은 **백본·diffusion head가 동일**하고 비전 입력 스택만 다르다 — 변종별 전체 파라미터 비교는 §0 "변종별 전체 크기 비교" 표 참조(인코더 제거 절감은 전체의 3~5%뿐).
 
 ### 핵심 결과 — crossover
 
