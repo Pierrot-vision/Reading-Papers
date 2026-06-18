@@ -37,17 +37,15 @@
 
 ## 📂 Diffusion-Edit
 
-> 편집(Editing) / VTON / Multi-Reference Conditioning 계열. **양쪽에 해당하는 통합 모델**(HiDream-O1·DreamLite·Qwen-Image-2.0·UniCustom)은 Diffusion 섹션에도 동시 등재되어 있습니다.
-
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
 | 8 | [Tstars-Tryon 1.0: Industrial-Grade Virtual Try-On](Diffusion-Edit/PAPER_Tstars-Tryon.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2604.19748) | - | 2026-06-15 |
 | 7 | [UniRef-Image-Edit: Towards Scalable and Consistent Multi-Reference Image Editing](Diffusion-Edit/PAPER_UniRef-Image-Edit.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2602.14186) | - | 2026-06-10 |
 | 6 | [FireRed-Image-Edit-1.0 Technical Report](Diffusion-Edit/PAPER_FireRed-Image-Edit.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2602.13344) | [github](https://github.com/FireRedTeam/FireRed-Image-Edit) | 2026-06-10 |
-| 5 | [Qwen-Image-2.0 Technical Report](Diffusion/PAPER_Qwen-Image-2.0.md) ⤴ Diffusion 공동 등재 | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.10730) | [github](https://github.com/QwenLM/Qwen-Image) | 2026-06-04 |
-| 4 | [HiDream-O1-Image: A Natively Unified Image Generative Foundation Model with Pixel-level Unified Transformer](Diffusion/PAPER_HiDream-O1-Image.md) ⤴ Diffusion 공동 등재 | Tech Report 2026 | [pdf](https://github.com/HiDream-ai/HiDream-O1-Image/blob/main/assets/HiDream-O1-Image.pdf) | [github](https://github.com/HiDream-ai/HiDream-O1-Image) | 2026-06-02 |
-| 3 | [DreamLite: A Lightweight On-Device Unified Model for Image Generation and Editing](Diffusion/PAPER_DreamLite.md) ⤴ Diffusion 공동 등재 | arXiv 2026 | [arxiv](https://arxiv.org/abs/2603.28713) | [github](https://github.com/ByteVisionLab/DreamLite) | 2026-05-26 |
-| 2 | [UniCustom: Unified Visual Conditioning for Multi-Reference Image Generation](Diffusion/PAPER_UniCustom.md) ⤴ Diffusion 공동 등재 | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.12088) | - | 2026-05-27 |
+| 5 | [Qwen-Image-2.0 Technical Report](Diffusion/PAPER_Qwen-Image-2.0.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.10730) | [github](https://github.com/QwenLM/Qwen-Image) | 2026-06-04 |
+| 4 | [HiDream-O1-Image: A Natively Unified Image Generative Foundation Model with Pixel-level Unified Transformer](Diffusion/PAPER_HiDream-O1-Image.md) | Tech Report 2026 | [pdf](https://github.com/HiDream-ai/HiDream-O1-Image/blob/main/assets/HiDream-O1-Image.pdf) | [github](https://github.com/HiDream-ai/HiDream-O1-Image) | 2026-06-02 |
+| 3 | [DreamLite: A Lightweight On-Device Unified Model for Image Generation and Editing](Diffusion/PAPER_DreamLite.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2603.28713) | [github](https://github.com/ByteVisionLab/DreamLite) | 2026-05-26 |
+| 2 | [UniCustom: Unified Visual Conditioning for Multi-Reference Image Generation](Diffusion/PAPER_UniCustom.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.12088) | - | 2026-05-27 |
 | 1 | [Any2AnyTryon: Leveraging Adaptive Position Embeddings for Versatile Virtual Clothing Tasks](Diffusion-Edit/PAPER_Any2AnyTryon.md) | ICCV 2025 | [arxiv](https://arxiv.org/abs/2501.15891) | [github](https://github.com/logn-2024/Any2anyTryon) | 2026-05-27 |
 
 ## 📂 Diffusion-Distillation
