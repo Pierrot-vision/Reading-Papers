@@ -306,6 +306,22 @@ vec = t_vec + pooled_embedder(pooled_text)     # ① + ②
 
 **(2) 크기는 RMSNorm에서 안 죽나? → pre-norm 잔차가 보존** — 입력은 정규화 없이 곧장 `img_embedder`(Conv, 선형 → 큰 입력은 큰 feature)로 들어간다. pre-norm 구조라 norm은 **attention/MLP에 넣을 복사본에만** 적용되고, skip(잔차) 경로 `x`는 정규화되지 않아 임베딩 크기가 끝까지 보존된다. 첫 norm에서 죽지 않는다.
 
+여기서 "잔차 경로 x는 정규화 안 함"이 정확히 **어느 코드**인지가 헷갈리기 쉽다. `DoubleStreamDiTBlock.forward`를 보면:
+
+```python
+def forward(self, x, txt, vec):
+    x_norm = self.img_norm1(x)               # ① norm 결과는 'x_norm'(복사본)으로 감
+    qkv_i  = self.img_qkv(x_norm)...          #   x_norm은 QKV 계산에만 쓰이고 버려짐
+    ...
+    x = x + self.img_attn_proj(out...)        # ② ← 맨 앞 'x'(정규화 안 된 원본)가 잔차 경로
+    x = x + self.img_mlp(self.img_norm2(x))   # ③ norm은 괄호 안 MLP 입력에만, 바깥 'x'는 원본
+    return x, txt
+```
+
+- **①**: `img_norm1(x)` 결과가 원본 `x`를 덮어쓰지 않고 **새 변수 `x_norm`**에 담긴다 → QKV 계산에만 소비.
+- **②③**: `x = x + (...)`에서 **더해지는 쪽의 `x`**(맨 앞)는 norm을 한 번도 안 거친 원본. 이게 "잔차/skip 경로"다.
+- 정리: `x = x + Sublayer(Norm(x))` 형태 = **norm은 Sublayer 입력에만, 잔차에는 안 붙음**(= pre-norm의 정의). 반대로 post-norm `x = Norm(x + Sublayer(x))`였다면 잔차까지 정규화돼 크기가 죽는다. 블록 진입 전 `x = img_embedder(img); x = x + pos`에도 norm이 없어, noise_scale=2로 증폭된 입력 크기가 첫 잔차 스트림에 온전히 실린다.
+
 **(3) 크기를 지워도 구조가 신호** — t≈0은 공간 상관 없는 백색잡음, t≈1은 매끄러운 자연 이미지. 통계적 패턴 차이만으로도 t 구분 가능.
 
 이 모든 게 작동하는 근본 이유는 **x-예측**(§2)이라 노이즈 레벨을 느슨하게만 알아도 깨끗한 이미지를 직접 맞히면 되기 때문 = JiT의 핵심 발견.
@@ -324,6 +340,23 @@ vec = t_vec + pooled_embedder(pooled_text)     # ① + ②
 | **B/16·L/16 처음부터 학습** | **JAX 레포에만** 있음 — PyTorch엔 B/32 학습만 제공 |
 
 즉 헤드라인 모델(0.88)을 PyTorch만으로 처음부터 학습할 수는 없다.
+
+### Q6. 이 연구의 모델 크기는? (왜 "작다"가 핵심인가)
+
+생성기(denoiser) 크기는 **B/32 260M · B/16 258M · L/16 912M**, 텍스트 인코더는 세 모델 공통 **FLAN-T5-Large 341M(동결)**이다(세부 표는 §실험 스케일업 참조). 즉 **가장 큰 L/16도 생성기 기준 ~0.9B**, 인코더 포함해도 ~1.25B.
+
+이 "0.9B"가 메시지의 핵심 — 요즘 상용 T2I 대비 압도적으로 작다:
+
+| 모델 | 생성기 크기 | MiniT2I-L/16 대비 |
+|---|---|---|
+| **MiniT2I-L/16** | **0.9B** | 1× |
+| SD3-Medium | ~2B | 2.2× |
+| FLUX.1-dev | 12B | 13× |
+| Qwen-Image | 20B | 22× |
+
+- **B/32→B/16은 파라미터 거의 동일**(260M≈258M). 패치만 32→16으로 줄여 토큰을 256→1024로 4배 늘린 것 = 크기가 아니라 토큰 밀도(해상도) 차이.
+- **B/16→L/16이 진짜 스케일업**: hidden 768→1248, head 12개(dim 64)→24개(dim 52), 깊이 17 유지 → 258M→912M(약 3.5배).
+- 0.9B로 GenEval 0.88이 나온 건 크기보다 **레시피(픽셀+x예측+2단 데이터 분업)** 덕. 저자도 "진짜 병목은 모델 크기가 아니라 데이터"라고 못박음 → **작은 크기 자체가 "T2I는 ImageNet급 자원으로 가능"이라는 주장의 증거**.
 
 ---
 
