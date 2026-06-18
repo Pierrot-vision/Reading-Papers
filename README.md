@@ -8,6 +8,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 27 | [Query-Kontext: An Unified Multimodal Model for Image Generation and Editing](Diffusion/PAPER_Query-Kontext.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2509.26641) | - | 2026-06-18 |
 | 26 | [MiniT2I: A Minimalist Baseline for Text-to-Image Generation](Diffusion/PAPER_MiniT2I.md) | Blog 2026 | [blog](https://peppaking8.github.io/#/post/minit2i) | [github](https://github.com/Hope7Happiness/minit2i-torch) | 2026-06-18 |
 | 25 | [TUNA-2: Encoder-free Native Unified Multimodal Model](Diffusion/PAPER_TUNA-2.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2604.24763) | [github](https://github.com/facebookresearch/tuna-2) | 2026-06-17 |
 | 24 | [TREAD: Token Routing for Efficient Architecture-agnostic Diffusion Training](Diffusion/PAPER_TREAD.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2501.04765) | - | 2026-06-17 |
@@ -39,6 +40,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 9 | [Query-Kontext: An Unified Multimodal Model for Image Generation and Editing](Diffusion/PAPER_Query-Kontext.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2509.26641) | - | 2026-06-18 |
 | 8 | [Tstars-Tryon 1.0: Industrial-Grade Virtual Try-On](Diffusion-Edit/PAPER_Tstars-Tryon.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2604.19748) | - | 2026-06-15 |
 | 7 | [UniRef-Image-Edit: Towards Scalable and Consistent Multi-Reference Image Editing](Diffusion-Edit/PAPER_UniRef-Image-Edit.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2602.14186) | - | 2026-06-10 |
 | 6 | [FireRed-Image-Edit-1.0 Technical Report](Diffusion-Edit/PAPER_FireRed-Image-Edit.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2602.13344) | [github](https://github.com/FireRedTeam/FireRed-Image-Edit) | 2026-06-10 |
