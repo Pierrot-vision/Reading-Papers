@@ -8,6 +8,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 30 | [MiniT2I: A Minimalist Baseline for Text-to-Image Generation](Diffusion/PAPER_MiniT2I.md) | Blog 2026 | [blog](https://peppaking8.github.io/#/post/minit2i) | [github](https://github.com/Hope7Happiness/minit2i-torch) | 2026-06-18 |
 | 29 | [TUNA-2: Encoder-free Native Unified Multimodal Model](Diffusion/PAPER_TUNA-2.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2604.24763) | [github](https://github.com/facebookresearch/tuna-2) | 2026-06-17 |
 | 28 | [TREAD: Token Routing for Efficient Architecture-agnostic Diffusion Training](Diffusion/PAPER_TREAD.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2501.04765) | - | 2026-06-17 |
 | 27 | [REPA: Representation Alignment for Generation](Diffusion/PAPER_REPA.md) | ICLR 2025 (Oral) | [arxiv](https://arxiv.org/abs/2410.06940) | [github](https://github.com/sihyun-yu/REPA) | 2026-06-17 |
