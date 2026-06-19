@@ -119,16 +119,32 @@ MLLM이 출력하는 **128개 쿼리 토큰** Q = {q₁, …, q₁₂₈} 안에
 
 ### 5.4 3단계 점진적 학습
 
-> 왜? 화질 좋은 큰 diffusion을 처음부터 통합 학습시키면 비싸고 불안정하다. 작게 시작해 키우면 싸고 안정적이다.
+> 왜? 화질 좋은 큰 diffusion을 처음부터 통합 학습시키면 비싸고 불안정하다. 그래서 ① 작은 헤드로 "VLM↔diffusion을 잇는 법"을 싸게 먼저 익히고 → ② 본진 큰 diffusion으로 갈아끼워 화질을 올리고 → ③ 저수준 인코더로 디테일을 마무리하는, 비용을 뒤로 미루는 전략을 쓴다.
 
-| 단계 | step / batch | 학습 대상 | 동결 | 과제·목적 |
-|---|---|---|---|---|
-| **1단계 (개념 잡기)** | 72K / 512 | MLLM의 **LoRA** + 가벼운 헤드(~870M) + Connector + kontext 토큰 | MLLM 본체 | T2I·이미지 복원·이미지 변환 — "생성적 추론력"을 깨우고 instruction 이해·grounding·시각 참조 능력을 기름 |
-| **2단계 (규모 키우기)** | 420K / 1024 | kontext 토큰 + Connector + **MMDiT 전체(~10B)** | MLLM **완전 동결**(LoRA 병합) | T2I·복원으로 빠른 정렬. ⚠️ 이 규모에선 diffusion을 통째로 동결하면 정렬 실패 → diffusion은 풀어 full 학습 |
-| **3단계 (디테일 보강)** | 30K / 512 | kontext 토큰 + Connector + diffusion **LoRA(rank 256)** + **저수준 VAE 인코더** 투입 | MLLM 동결 | 편집·맞춤·다중피사체 등 실전 과제 전부 커버 |
-| 해상도 업스케일 | +3K | — | — | 1024×1024 고해상도 적응 |
+> 세 단계 한눈에 (논문 Fig.3). 🔥=학습(trainable), ❄️=동결(frozen). 위쪽이 합성기(diffusion), 아래쪽이 두뇌(MLLM)다.
+> ![3단계 학습](figures/querykontext_fig3.png)
 
-학습 자원: NVIDIA **H100 192장** (VLM은 tensor parallelism, diffusion은 ZeRO Stage-2 + BF16). 전체 비용은 큰 diffusion을 scratch 학습하는 것의 **약 10%**.
+그림을 단계별로 읽으면 이렇다.
+
+**🔹 Stage 1 — "잇는 법"을 싸게 연습 (개념 잡기)**
+아직 큰 diffusion을 안 붙인다. 대신 **가벼운 Lightweight Diffusion Head(~870M, 🔥)**를 임시 합성기로 쓴다. 아래 두뇌 MLLM은 **본체 동결(❄️) + LoRA만 학습(🔥)**, 그 위에 **Connector(🔥)와 kontext 토큰(🔥)**을 함께 학습한다. 입력은 노이즈 latent + 텍스트. 목적은 화질이 아니라 **"VLM이 뽑은 조건을 합성기가 알아듣게 만드는 법"** — 즉 instruction 이해·grounding(지시한 대상 찾기)·시각 참조 같은 **생성적 추론력**을 싸게 깨우는 것. (72K step / batch 512)
+
+**🔹 Stage 2 — 본진 diffusion으로 갈아끼워 화질 키우기**
+임시 헤드를 버리고 **본진 MM-DiT(~10B, 헤드의 약 10배, 🔥)**로 교체한다. 이제 MLLM은 LoRA까지 병합해 **완전 동결(❄️)** — 두뇌는 1단계에서 익힌 대로 "거친 이미지 조건(coarse-grained condition)"만 제공하고, 학습 자원은 전부 합성기 쪽(kontext 토큰 + Connector + MM-DiT 전체)에 쏟는다. ⚠️ **발견**: 이 규모에선 diffusion을 통째로 동결한 채 붙이면 정렬에 실패한다(작은 헤드일 땐 됐음). 그래서 MM-DiT는 풀어서 full 학습. 목적은 T2I·복원으로 **고화질 합성 능력 확보**. (420K step / batch 1024)
+
+**🔹 Stage 3 — 저수준 인코더로 디테일 마무리 + 실전 과제 학습**
+여기서 **저수준 VAE 인코더(low-level encoder)**를 추가 투입한다(그림 Stage 3 위쪽의 새 입력 경로). kontext 토큰이 약한 **픽셀 질감·정체성**을 이 경로가 보강한다(→ §5.2 참조와 짝). MLLM은 계속 동결(❄️), 이제 MM-DiT는 통째 학습이 아니라 **LoRA(rank 256, 🔥)**로만 가볍게 미세조정. 이 단계에서 **편집·피사체 맞춤·다중피사체 합성** 같은 실전 과제를 전부 가르친다. (30K step / batch 512, 이후 1024×1024 적응에 +3K step)
+
+표로 요약하면:
+
+| 단계 | 합성기 | MLLM | 새로 학습(🔥) | step / batch | 목적 |
+|---|---|---|---|---|---|
+| **1** | Lightweight Head(~870M) | 동결+**LoRA**🔥 | Head + Connector + kontext 토큰 + MLLM-LoRA | 72K / 512 | 잇는 법·추론력 싸게 깨우기 |
+| **2** | **MM-DiT(~10B)** full🔥 | 완전 동결(LoRA 병합) | kontext 토큰 + Connector + MM-DiT 전체 | 420K / 1024 | 고화질 합성 확보 |
+| **3** | MM-DiT + **저수준 VAE 인코더** | 동결 | kontext 토큰 + Connector + diffusion **LoRA(r256)** | 30K / 512 | 디테일 보강 + 실전 4과제 |
+| 업스케일 | — | — | — | +3K | 1024² 고해상도 적응 |
+
+학습 자원: NVIDIA **H100 192장** (VLM은 tensor parallelism, diffusion은 ZeRO Stage-2 + BF16). 핵심 효과 — 가장 비싼 큰 diffusion(MM-DiT)은 2단계에서야 등장하고 3단계엔 LoRA만 돌리므로, 전체 비용이 큰 diffusion을 scratch 학습하는 것의 **약 10%** 에 그친다.
 
 ---
 
