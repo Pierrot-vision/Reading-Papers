@@ -8,6 +8,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 29 | [i1: A Recipe for Text-to-Image Diffusion from Public Materials](Diffusion/PAPER_i1.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.11289) | [github](https://github.com/zlab-princeton/i1) | 2026-06-19 |
 | 28 | [Ovis-Image Technical Report](Diffusion/PAPER_Ovis-Image.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2511.22982) | [github](https://github.com/AIDC-AI/Ovis-Image) | 2026-06-19 |
 | 27 | [Query-Kontext: An Unified Multimodal Model for Image Generation and Editing](Diffusion/PAPER_Query-Kontext.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2509.26641) | - | 2026-06-19 |
 | 26 | [MiniT2I: A Minimalist Baseline for Text-to-Image Generation](Diffusion/PAPER_MiniT2I.md) | Blog 2026 | [blog](https://peppaking8.github.io/#/post/minit2i) | [github](https://github.com/Hope7Happiness/minit2i-torch) | 2026-06-18 |
