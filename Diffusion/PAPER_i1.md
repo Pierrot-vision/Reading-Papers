@@ -106,6 +106,12 @@
 
 *먼저 전체 파이프라인을 한눈에 잡아두면, 이후 각 장이 이 그림의 어느 부분인지 바로 연결됩니다.*
 
+![Figure 4: i1 최종 모델 전체 구조](figures/i1_fig4.png)
+
+*▲ Figure 4 (논문 원본). i1의 전체 파이프라인 한 장 요약. 위쪽 **Training(학습)**: 공개 데이터(public datasets) → VAE encoder로 latent 압축 → diffusion backbone(확산 백본)이 학습. 텍스트는 큰 텍스트 인코더(large text encoder)를 거쳐 들어감. 아래쪽 **Sampling(추론)**: 입력 프롬프트(input prompt) → prompt rewriter(프롬프트 재작성)로 길게 늘린 뒤 → 같은 백본으로 이미지 생성. 캡션의 핵심 메시지: "새 네트워크 모듈을 도입하기보다, 신중히 고른 모델링·데이터 선택을 조합해 단순하고 강한 모델을 만들었다"(=이 논문의 정체성).*
+
+아래는 같은 흐름을 글자로 더 자세히 편 것입니다.
+
 ```
 [공개 데이터 12종 ~167M]
    │  (§7-A 이미지 다운로드)
@@ -146,6 +152,22 @@
 | 학습 목적 | flow matching | — |
 | 총 파라미터 | **3B** | — |
 
+#### dual-stream 블록의 내부 (Figure 29)
+
+*왜 이 그림을 보나: "dual-stream(듀얼스트림)"이 말로는 와닿지 않는데, 이 그림 한 장이 "무엇을 modality별로 나누고 무엇을 합치는지"를 정확히 보여준다.*
+
+![Figure 29: dual-stream 백본 블록 구조](figures/i1_fig29.png)
+
+*▲ Figure 29 (논문 원본, Appendix A.2 — ablation에 쓴 baseline의 dual-stream 변형 블록). 한 블록은 위쪽 **Attention**과 아래쪽 **FFN(피드포워드)** 두 부분.*
+
+그림 읽는 법(핵심만):
+- **무엇을 modality별로 나누나(=dual-stream)**: `query / key / value`가 **각각 2개씩**, `SwiGLU FFN`도 **2개**다. 즉 텍스트 토큰과 노이즈 이미지 토큰이 **서로 다른 가중치**로 q·k·v를 만들고 FFN을 통과한다(modality-specific, 각자 스트림).
+- **무엇을 합치나**: 두 modality의 토큰을 시퀀스 차원으로 이어 붙여(concat) **multi-head attention은 하나로 함께** 수행한다. 그래서 "분리된 스트림인데 attention에서 정보가 섞이는" 구조. `RMS norm`·`Q/K-norm`도 "across modalities"라 두 modality에 공통 적용.
+- **조건(condition) 주입**: 오른쪽 화살표의 **noise & pooled text embedding(노이즈 단계 + 요약 텍스트 임베딩)**이 `scale & shift`와 `gate`를 만들어 블록을 변조한다 — 이것이 AdaLN(adaptive LayerNorm) 계열 변조다.
+- **잔차(residual)**: Attention·FFN 각각 끝에서 `gate`를 거쳐 입력에 더해진다(그림의 ⊕).
+
+> ⚠️ 주의: 이 그림은 **ablation용 baseline의 dual-stream 변형**이라 noise conditioning(`scale & shift`/`gate`)이 그려져 있다. 최종 i1은 실험 결과 이 **AdaLN 계열 noise conditioning의 이득이 미미함을 확인하고 단순화/제거**했다(→ F5, §10). 즉 "토큰을 modality별로 나눠 처리하되 attention에서 합친다"는 dual-stream 골격은 최종 모델과 같고, 조건 주입 방식만 더 단순해졌다고 보면 된다.
+
 핵심을 풀어 말하면:
 
 - **"강한 인코더 하나 + 큰 어댑터"**: 여러 텍스트 인코더(예: T5 + CLIP)를 붙이는 흔한 관행 대신, T5Gemma-2B 하나를 동결해 쓰되 그 출력을 다듬는 어댑터(adapter)를 MLP(2.6M)에서 **트랜스포머 2블록(약 34M)**으로 키웠다. 인코더 자체는 동결이라 추가 학습 비용이 거의 없으면서, 어댑터만 키워 성능을 끌어올린 게 영리한 지점.
@@ -170,8 +192,8 @@
 **합성 이미지(synthetic, 3종)** — 미적 품질·프롬프트 정렬 담당
 - GPT-Image-Edit-1.5M, FLUX-Reason-6M, Midjourney v6
 
-**텍스트 렌더링(text-rendering, 2종)** — 이미지 안 글자 그리기 담당 (i1의 강점 원천)
-- RenderedText, TextAtlas
+**텍스트 렌더링(text-rendering, 2종)** — 이미지 안 글자 그리기 담당 (i1의 강점 원천, 상세는 §7-D)
+- RenderedText, TextAtlas5M
 
 공개된 캡션 데이터셋(`i1-captions`) 기준 실제 쌍 수(상위):
 
@@ -208,6 +230,51 @@
 - **전략**: 크기 비례가 아니라, **반복을 포함해 각 데이터셋에서 같은 수의 이미지를 뽑아 섞는다**(임계값 약 1.2M = 모든 데이터셋에 동일 가중).
 - **결과**: 어떤 데이터셋을 따로 upweight(가중 상향)해도 "정확한 동일 가중"을 못 이김. iNaturalist는 오히려 빼는 게 전 벤치마크에서 더 좋았음.
 - **반복(repetition) 내성**: 데이터가 다양하기만 하면, 작은 데이터셋을 여러 번 반복 학습해도 성능 저하가 미미함(F9) → 큰 데이터셋에 맞춰 작은 것을 반복해도 안전.
+
+### 7-D. 텍스트 렌더링(text rendering) 데이터셋 상세
+
+*왜 따로 정리하나: i1의 두드러진 강점(CVTG-2K 0.853 / LongText 0.922)이 전적으로 이 두 데이터셋 + 동일 가중 혼합에서 나오기 때문이다. i1은 글자 전용 모델 모듈(glyph encoder 등)을 새로 만들지 않았고, "데이터로 해결"한다.*
+
+이미지 안에 또렷한 글자를 그리려면 일반 사진 데이터(YFCC 등)만으론 부족해서, 글자 전용 공개 데이터 2종을 명시적으로 넣었다. 둘은 성격이 **상보적**이다.
+
+**(1) RenderedText — 손글씨 합성 대량 데이터** (기본기 담당)
+
+| 항목 | 내용 |
+|---|---|
+| 제작 | Stability AI + LAION |
+| 규모 | 1,200만 장, 1024×1024 (i1-captions 기준 약 1,198만 쌍, 캡션 변형 5) |
+| 성격 | 합성(synthetic) — 손글씨 스타일 텍스트를 3D 종이 위에 렌더링 |
+| 생성 방식 | Blender geometry nodes + Cycles. 폰트 크기·색·회전·조명 무작위 |
+| 폰트/텍스트 | 폰트 약 8,000종(Urban Fonts, Font Space) / 텍스트는 Wikipedia·Project Gutenberg |
+| 부가 자원 | Poly Haven HDRI 643개, Ambient CG 머티리얼 1,837개 (모두 CC0) |
+| 어노테이션 | 줄·문자 단위 bounding box, 텍스트 내용, 문자 인덱스, 폰트, 색, 회전각 (JSON) |
+| 라이선스 | HF 카드에 명시적으로 안 잡힘(주의) — 사용 자원은 CC0 |
+| 공개 링크 | https://huggingface.co/datasets/wendlerc/RenderedText |
+
+**(2) TextAtlas5M — 밀집·긴 텍스트 현실 데이터** (응용력 담당)
+
+| 항목 | 내용 |
+|---|---|
+| 제작 | CSU-JPG (Central South University 계열) 외, arXiv 2502.07870 |
+| 규모 | 약 539만 장(5,398,826), 1.2TB, 10개 서브셋 (i1-captions 기준 약 540만 쌍, 캡션 변형 5) |
+| 성격 | 합성 + 실제 혼합 — 밀집/긴 텍스트(dense/long text) 전용 |
+| 주요 서브셋 | CleanTextSynth 1.91M, LongWordsSubset-M 1.25M, TextVisionBlend 547k, StyledTextSynth 426k, Paper2Text 357k, PPT2Details 299k, LongWordsSubset-A 260k, CoverBook 208k, PPT2Structured 96.4k, TextScenesHQ 48.9k |
+| 실제 소스 | 책 표지, PPT 슬라이드, 논문 페이지 등 |
+| 동반 벤치마크 | TextAtlasEval (긴 텍스트 렌더링 평가용) |
+| 라이선스 | MIT (상업·연구 자유) |
+| 공개 링크 | 데이터 https://huggingface.co/datasets/CSU-JPG/TextAtlas5M · 논문 https://arxiv.org/abs/2502.07870 · 프로젝트 https://textatlas5m.github.io/ |
+
+**둘의 분업**
+- RenderedText = "글자 하나하나를 또렷하게 그리는 기본기" (대량·단순·손글씨)
+- TextAtlas5M = "긴 문장·복잡한 배치(표지·문서·인포그래픽)를 그리는 응용력" (현실·밀집·인쇄)
+
+**i1이 글자 렌더링을 잘하기 위해 한 일 — 4가지 (전용 모듈 無, 데이터·혼합·평가로 해결)**
+1. **글자 전용 데이터 명시적 포함**: 위 두 데이터셋을 학습 세트에 넣음.
+2. **동일 가중(equal weighting)으로 안 묻히게 섞음** ⭐ 가장 결정적: 크기대로면 YFCC(98M)가 지배해 글자 데이터가 무시됨 → 각 데이터셋 동일 비중(F8)으로 글자 데이터가 사진 데이터와 동등하게 학습됨.
+3. **긴 재캡션이 "이미지 속 글자 내용"까지 담음**: Qwen3-VL이 이미지를 한 문단으로 묘사할 때 화면의 글자 내용도 캡션에 들어가, "프롬프트 단어 ↔ 그릴 글자" 대응을 더 정확히 학습.
+4. **글자 벤치마크로 검증·최적화**: 평가에 CVTG-2K·LongText를 포함해, 300+ ablation에서 글자에 유리한 선택이 살아남음. (1024 고해상도 학습·고품질 FLUX.2 VAE도 간접 기여.)
+
+> 대비점: [[paper_qwen_image]]·[[paper_longcat_image]]가 한자 렌더링을 위해 데이터 합성·커리큘럼·전용 처리를 정교하게 쌓은 것과 달리, i1은 "공개 글자 데이터 2개를 동등 비중으로 넣는다"는 단순 처방만으로 영어 글자 렌더링 경쟁력을 얻었다.
 
 ---
 
@@ -329,7 +396,7 @@ i1-3B 점수:
 FLUX.1-dev·HiDream-I1은 **가중치만** 푼 open-weight라 데이터·학습법을 모른다. i1은 거기에 더해 **데이터 파이프라인·캡션·학습 코드·혼합비·하이퍼파라미터**까지 공개해, 원리상 처음부터 따라 만들 수 있게 한다(재현성).
 
 ### Q4. 왜 글자(텍스트 렌더링)를 잘하나?
-학습 데이터에 글자 전용 데이터셋(RenderedText, TextAtlas)을 넣고, 이걸 큰 데이터셋(YFCC 등)에 묻히지 않게 **동일 가중(F8)**으로 섞었기 때문. "데이터 혼합 전략"이 능력으로 직결된 사례.
+글자 전용 모듈을 만든 게 아니라 **데이터·혼합·평가로 해결**했다. 글자 전용 데이터(RenderedText, TextAtlas5M)를 넣고(①), 큰 데이터(YFCC)에 묻히지 않게 동일 가중으로 섞고(②), 재캡션에 글자 내용을 담고(③), 글자 벤치마크로 검증(④)했다. → 데이터셋 상세와 4가지 처방은 **§7-D 참조**.
 
 ### Q5. 700K TPU 시간이면 누구나 재현 가능한가?
 아니다. 그 수치는 **300+ ablation 전체** 누적이고, i1-3B 한 번 학습은 그보다 훨씬 적다. 그래도 학계 기준으로는 큰 자원이라 "완전 자력 재현"은 현실적으로 자원 있는 곳만 가능. 다만 **설계 근거(Findings)와 데이터 레시피를 그대로 가져다 쓸 수 있다**는 게 핵심 가치.
