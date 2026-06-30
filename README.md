@@ -8,7 +8,6 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
-| 30 | [Qwen-Image-2.0-RL: RLHF + On-Policy Distillation Recipe](Diffusion/PAPER_Qwen-Image-2.0-RL.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.27608) | - | 2026-06-19 |
 | 29 | [i1: A Recipe for Text-to-Image Diffusion from Public Materials](Diffusion/PAPER_i1.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.11289) | [github](https://github.com/zlab-princeton/i1) | 2026-06-19 |
 | 28 | [Ovis-Image Technical Report](Diffusion/PAPER_Ovis-Image.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2511.22982) | [github](https://github.com/AIDC-AI/Ovis-Image) | 2026-06-19 |
 | 27 | [Query-Kontext: An Unified Multimodal Model for Image Generation and Editing](Diffusion/PAPER_Query-Kontext.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2509.26641) | - | 2026-06-19 |
@@ -52,6 +51,12 @@
 | 3 | [DreamLite: A Lightweight On-Device Unified Model for Image Generation and Editing](Diffusion/PAPER_DreamLite.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2603.28713) | [github](https://github.com/ByteVisionLab/DreamLite) | 2026-05-26 |
 | 2 | [UniCustom: Unified Visual Conditioning for Multi-Reference Image Generation](Diffusion/PAPER_UniCustom.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.12088) | - | 2026-05-27 |
 | 1 | [Any2AnyTryon: Leveraging Adaptive Position Embeddings for Versatile Virtual Clothing Tasks](Diffusion-Edit/PAPER_Any2AnyTryon.md) | ICCV 2025 | [arxiv](https://arxiv.org/abs/2501.15891) | [github](https://github.com/logn-2024/Any2anyTryon) | 2026-05-27 |
+
+## 📂 Diffusion-Post Training
+
+| No | Title | Venue | Paper | Code | Updated |
+|---|---|---|---|---|---|
+| 1 | [Qwen-Image-2.0-RL: RLHF + On-Policy Distillation Recipe](Diffusion-Post%20Training/PAPER_Qwen-Image-2.0-RL.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.27608) | - | 2026-06-19 |
 
 ## 📂 Diffusion-Distillation
 
