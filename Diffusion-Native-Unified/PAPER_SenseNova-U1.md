@@ -172,7 +172,7 @@ MoT(Mixture-of-Transformers)의 세 요소:
 | 1 | **이해 워밍업** | ~120K step | NEO 백본에서 이어받아 attention 융합 → 전체 학습 |
 | 2 | **생성 사전학습** | ~300K step (3 phase) | 256~1024px → 512~2048px → 편집/interleaved |
 | 3 | **통합 mid-training** | ~84K step | 이해+생성 섞어 공동 최적화 |
-| 4 | **SFT** | ~9K step | 지시문 정렬(instruction alignment) |
+| 4 | **SFT** | ~9K step | 지시문 정렬(instruction alignment) — 상세는 아래 소절 |
 | 5 | **RL 후처리** | — | **Flow-GRPO** (텍스트 렌더링·스타일·미감 보상) |
 | 6 | **증류** | — | **DMD** 100 step → 8 step |
 
@@ -231,7 +231,7 @@ MoT(Mixture-of-Transformers)의 세 요소:
 - mid-training: General 39.2% / Agent·Spatial 22.3% / Knowledge Reasoning 19.3% / Pure Text 19.2%
   - General 세부: visual QA 26.6% / 멀티턴 대화 26.4% / captioning 20.3% / OCR 18.6% / multi-image 8.2%
   - Knowledge Reasoning 세부: 지식형 12.0% / 추론형 7.2%
-- SFT: 공간지능(spatial intelligence) ~15% / 일반 멀티모달 이해 ~13% / 추론 ~12% / 일반 NLP ~11% / OCR·문서 ~11% / agentic function calling ~10% / 롱컨텍스트 대화 ~8% / 코드 ~6% / 멀티턴 ~4% / 복합 구성 이해 ~4%
+- SFT 분포 → 아래 "SFT 상세" 소절 참조
 
 **생성(generation) corpus 비율**:
 - T2I 대분류: Nature ~40.5% / People ~26.7% / Design ~20.7% (+ infographics·이중언어 텍스트 렌더링)
@@ -274,6 +274,23 @@ MoT(Mixture-of-Transformers)의 세 요소:
 | **(C) Multi-criteria Quality Filtering(다기준 품질 필터)** | 틀린 QA 쌍 버리기 | Correctness Verification(정답 검증)·Hallucination Detection(환각 탐지)·Instruction-Following(지시 준수) 3기준으로 QA Pair 평가 → Final Refined Set / Rejected Data |
 
 → 생성이 "예쁘고 안 겹치는 이미지"를 고른다면, 이해는 "**골고루 다양하고 정답이 맞는 QA**"를 고른다.
+
+#### SFT(Supervised Fine-Tuning, 지도 미세조정) 상세 — 4단계
+
+> *왜 이 절을 두냐: SFT는 "새 지식 주입"이 아니라 "이미 배운 능력의 정렬"이다. mid-training과 무엇이 같고 무엇이 다른지를 갈라야 이 단계의 정체가 잡힌다.*
+
+- **목표**: "instruction alignment(지시 정렬)과 작업별 성능을 날카롭게 다듬는다" — 3단계까지 익힌 능력을 **사용자 지시를 잘 따르는 형태로 정렬**.
+- **규모·설정**: 9K step / ~0.13T token (3단계의 1/7). 학습률 cosine 스케줄 **2e-5 → 0**. 손실 가중치는 3단계와 동일(λ₁=0.1, λ₂=1.0). **full model**(이해+생성 스트림 모두) 조정.
+- **데이터 = 같은 믹스, 다른 선별** ⭐: 완전히 새 데이터가 아니라, mid-training과 **동일한 4종 믹스**(이해+T2I+편집+인터리브)를 유지하되, mid-training **candidate pool(후보 풀)을 quality & difficulty(품질·난이도) 이중 기준으로 정제한 부분집합**만 사용. 새 도메인을 추가하면 능력이 흔들리므로 종류는 유지하고 질만 올리는 방식 — [[paper_z_image]]·[[paper_qwen_image_2]] 등 최근 모델의 공통 SFT 관행.
+
+| | 3단계 mid-training | 4단계 SFT |
+|---|---|---|
+| 성격 | 넓은 커버리지·규모 확장 | **정제·난이도 집중** |
+| 데이터 | 대규모 혼합 pool | 같은 pool에서 **품질+난이도**로 추린 부분집합 |
+| 규모 | 84K step / 0.88T | 9K step / 0.13T |
+| 믹스·손실 | 이해33%·T2I37%·편집24%·인터리브6% / 0.1:1.0 | **동일** |
+
+- **이해 SFT 능력 분해**(understanding 몫 기준): 공간지능 ~15% / 일반 멀티모달 이해 ~13% / 추론 ~12% / 일반 NLP ~11% / OCR·문서 ~11% / agentic function calling ~10% / 롱컨텍스트 대화 ~8% / 코드 ~6% / 멀티턴 ~4% / 복합 구성 이해 ~4% (나머지 보조). → **공간지능이 SFT에서도 1순위** — VLA/월드모델 지향과 일관.
 
 **후처리 데이터·하이퍼파라미터**:
 - RL(Flow-GRPO) 텍스트 렌더링: 600 epoch, epoch당 프롬프트 N=48 × 이미지 K=16(=768장), 10-step, guidance 4.0, noise 0.7, 앞 200 epoch 동적해상도 워밍업
