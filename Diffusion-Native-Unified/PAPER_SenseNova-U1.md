@@ -176,13 +176,109 @@ MoT(Mixture-of-Transformers)의 세 요소:
 | 5 | **RL 후처리** | — | **Flow-GRPO** (텍스트 렌더링·스타일·미감 보상) |
 | 6 | **증류** | — | **DMD** 100 step → 8 step |
 
-**데이터 구성(Fig 8)**: 이해 corpus = image-text pairs 32% / captions 17% / infographics 14% / pure text 37% (교차소스 중복제거·안전 필터·품질 필터·CLIP 비율 균형 re-captioning). 생성 corpus = Nature 40.5% / People 26.7% / Design 20.7% + 이중언어 텍스트 렌더링.
-
 <p align="center">
   <img src="figures/sensenova_u1_fig8_data_dist.png" alt="SenseNova-U1 Figure 8 — data distribution" width="900"/>
 </p>
 
-> **Figure 8** | SenseNova-U1 학습 corpus의 계층적 데이터 분포(sunburst).
+> **Figure 8** | SenseNova-U1 학습 corpus의 계층적 데이터 분포. **왼쪽부터 4개 sunburst = ① 이해(Understanding) ② 생성 T2I(Generation) ③ 편집(Editing) ④ 인터리브(Interleaved)**. 안쪽 고리=대분류, 바깥 고리=세부.
+
+**Fig 8의 4개 차트 상세 분해**
+
+① **이해(Understanding)** — 대분류 4개:
+- General 39.23% (General VQA / Captioning / Multi-turn 대화 / Multi-image / OCR ~7.19% / Cognition 등)
+- Agent and Spatial 22.27% (Perspective-Taking / Spatial Relations / Grounding / Counting / GUI·Open perception 등 — **공간지능이 두 번째로 큼**)
+- Knowledge Reasoning 19.28% (Comprehension / Science / Math)
+- Pure Text 19.23% (Math ~5.16% / Knowledge / Code / Other)
+
+② **생성 T2I(Generation)** — 대분류 5개:
+- Nature 40.53% (Objects가 최대, Landscape ~5.5% / Cityscape ~4.20% / Animals / Food / Plants / Indoor)
+- People 26.65% (English Text / Chinese Text ~3.20% / Human-Object / Sports / Portrait / Social Scene / Body Parts — **텍스트 렌더링이 People 안에 포함**)
+- Design 20.68% (Arts ~8.40% / Posters ~5.11% / Slides / Cartoon / UI)
+- Synthetic 12.14%
+- Infographics 2.06%
+
+③ **편집(Editing)** — 대분류 4개:
+- Nature 52.30% (Composite ~19.72% / Subject Add ~12.65% / Color Alteration ~7.81% / Background Change ~3.12% / Portrait Edit ~2.26% / Motion Change ~1.37% / Identity Transfer / Subject Removal·Replacement / Reasoning)
+- Synthetic 18.66% (대부분 Infographics Edit)
+- People 14.68%
+- Design 11.05%
+
+④ **인터리브(Interleaved)** — 대분류 4개:
+- Lifestyle 43.85% (튜토리얼·일상·그림책 등)
+- Infographics 29.24%
+- Video 19.22% (VBRS ~7.42% / 추론 / 롱·숏 비디오)
+- Reasoning ~8%
+
+> ⚠️ 세부(바깥 고리) 수치는 그림에서 읽은 근사값이며, 대분류 수치가 논문 본문과 일치하는 확정값.
+
+#### 학습 데이터 상세 구성
+
+> ⚠️ **중요**: 논문은 데이터를 **token(토큰) 예산과 비율(%)로만** 공개하고, **이미지·샘플 절대 개수(count)는 밝히지 않는다.** 아래 절대량 수치는 모두 token 기준이며, "몇 억 장" 같은 이미지 수는 이 논문에서 알 수 없다.
+
+**단계별 token 예산(Table 2)** — 메인 학습 총 **~3.29T token**:
+
+| 단계 | Steps | Tokens | 데이터 믹스 |
+|---|---|---|---|
+| 1 이해 워밍업 | 120K | 0.75T | 이해 100% |
+| 2-I 생성 사전학습 | 120K | 0.25T | 생성 100% (256~1024px) |
+| 2-II 생성 사전학습 | 60K | 0.25T | 생성 100% (512~2048px) |
+| 2-III 생성 사전학습 | 120K | — | 생성 + 편집 + 인터리브 |
+| 3 통합 mid-training | 84K | 0.88T | 이해 33% / T2I 37% / 편집(editing) 24% / 인터리브 6% |
+| 4 SFT | 9K | 0.13T | 3단계와 동일 믹스 |
+
+**이해(understanding) corpus 비율**:
+- 사전학습: image-text pairs 32% / captions 17% / infographics 14% / pure text 37% (교차소스 중복제거·안전 필터·품질 필터·CLIP 비율 균형 re-captioning)
+- mid-training: General 39.2% / Agent·Spatial 22.3% / Knowledge Reasoning 19.3% / Pure Text 19.2%
+  - General 세부: visual QA 26.6% / 멀티턴 대화 26.4% / captioning 20.3% / OCR 18.6% / multi-image 8.2%
+  - Knowledge Reasoning 세부: 지식형 12.0% / 추론형 7.2%
+- SFT: 공간지능(spatial intelligence) ~15% / 일반 멀티모달 이해 ~13% / 추론 ~12% / 일반 NLP ~11% / OCR·문서 ~11% / agentic function calling ~10% / 롱컨텍스트 대화 ~8% / 코드 ~6% / 멀티턴 ~4% / 복합 구성 이해 ~4%
+
+**생성(generation) corpus 비율**:
+- T2I 대분류: Nature ~40.5% / People ~26.7% / Design ~20.7% (+ infographics·이중언어 텍스트 렌더링)
+- 편집(editing): 자연 장면 ~52.3% / 인물 ~14.7% / 나머지 infographic·합성. 작업 종류 = 추가·제거·배경/색 변경·identity transfer·모션 조작·인물 편집·합성·추론형 변형
+- 인터리브(interleaved): lifestyle ~44%(튜토리얼 26%·일상 14%·그림책 4%) / infographics ~29% / video ~19% / reasoning ~8%
+
+#### 데이터 정제 파이프라인 (Fig 7 이해 · Fig 9 생성)
+
+> *왜 이 절을 두냐: "무엇을 얼마나 썼나"(비율)만큼 "어떻게 걸러냈나"(파이프라인)가 품질을 좌우한다. 두 corpus는 정제 철학이 다르다 — 이해는 "다양성·정답성", 생성은 "화질·중복·안전".*
+
+**생성(generation) corpus — 4단계 필터링 (Fig 9)**
+
+<p align="center">
+  <img src="figures/sensenova_u1_fig9_gen_pipeline.jpg" alt="SenseNova-U1 Figure 9 — generation data pipeline" width="950"/>
+</p>
+
+> **Figure 9** | 생성 corpus 처리 파이프라인. Data Source → (A) 저수준 필터 → Filtered Corpus → (B) 중복제거 → Unique Corpus → (C) VLM 캡셔닝 → (D) 품질 필터 → Training Data.
+
+| 단계 | 하는 일 | 세부 |
+|---|---|---|
+| **(A) Low-Level Filter(저수준 필터)** | 화질 나쁜 이미지 자동 탈락 | Resolution(해상도)·Lighting(조명)·Color Saturation(채도)·Sharpness(선명도)·Texture Complexity(질감 복잡도)·Energy(에너지)·Compress Rate(압축률)·JPEG Entropy(JPEG 엔트로피)·**SigLIP**(의미 점수) |
+| **(B) Deduplication(중복제거)** | 거의 같은 이미지 제거 | **Perceptual Hash(지각 해시)**로 near-duplicate 삭제 → Unique Corpus |
+| **(C) VLM Captioning(캡셔닝)** | 이미지마다 설명·태그 자동 생성 | **Qwen3-VL-32B-Instruct**가 Short Caption(짧은 설명)·Long Caption(긴 설명)·Tagging(태그)·Category(분류) 생성 |
+| **(D) Quality Filter(품질 필터)** | 미감·유해요소 최종 거름 | Aesthetic Filter(미감 필터) + **Abnormal-Element Filter**(Watermark 워터마크·Blur/Mosaic 흐림·모자이크·NSFW 등) |
+
+→ 핵심 포인트 3가지: ① 캡션을 **Qwen3-VL-32B로 재생성**(원본 alt-text가 아니라 모델이 다시 씀) ② 워터마크·모자이크·NSFW를 명시적으로 제거 ③ SigLIP으로 이미지-텍스트 의미가 안 맞는 것도 저수준에서 컷.
+
+**이해(understanding) corpus — 다양성·정답성 중심 (Fig 7)**
+
+<p align="center">
+  <img src="figures/sensenova_u1_fig7_und_pipeline.png" alt="SenseNova-U1 Figure 7 — understanding data pipeline" width="900"/>
+</p>
+
+> **Figure 7** | 이해 corpus 처리 파이프라인. (A) 분포 균형 큐레이션 → (B) 프롬프트 증강 → (C) 다기준 품질 필터링.
+
+| 단계 | 하는 일 | 세부 |
+|---|---|---|
+| **(A) Distribution-balanced Curation(분포 균형 큐레이션)** | 편중 없이 다양하게 뽑기 | **CLIP 기반 다양성 샘플링**(CLIP 인코더 → visual embedding → K-means 클러스터링) + **Attribute Profiling**(perceptual·semantic 지표, 해상도, 선명도, 정보 밀도로 High/Med/Low tier 나눠 stratified sampling) |
+| **(B) Prompt Augmentation(프롬프트 증강)** | 질문·응답을 다채롭게 재작성 | Semantic Expression(의미 표현)·Format Structure(Length/List/Code 형식)·Role & Scenario(Teacher/Expert/User 역할)·Task complexity(기초 인식↔복합 인지 합성) → Prompt Augmentation & Uniform Response Rewriting(응답 통일 재작성) |
+| **(C) Multi-criteria Quality Filtering(다기준 품질 필터)** | 틀린 QA 쌍 버리기 | Correctness Verification(정답 검증)·Hallucination Detection(환각 탐지)·Instruction-Following(지시 준수) 3기준으로 QA Pair 평가 → Final Refined Set / Rejected Data |
+
+→ 생성이 "예쁘고 안 겹치는 이미지"를 고른다면, 이해는 "**골고루 다양하고 정답이 맞는 QA**"를 고른다.
+
+**후처리 데이터·하이퍼파라미터**:
+- RL(Flow-GRPO) 텍스트 렌더링: 600 epoch, epoch당 프롬프트 N=48 × 이미지 K=16(=768장), 10-step, guidance 4.0, noise 0.7, 앞 200 epoch 동적해상도 워밍업
+- RL(Flow-GRPO) 통합 일반: **8B 1,600 epoch / A3B 200 epoch**, 보상군 2개 교대, lr 1e-5, KL β=0.01
+- 증류(DMD2): 100→8 step, generator는 fake-flow 5회당 1회 갱신, generator lr 2e-6·fake-flow 4e-7, Euler·timestep shift 3.0·CFG 4.0
 
 ### 6. 추론 인프라 — 분리형 두 엔진
 
