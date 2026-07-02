@@ -12,7 +12,6 @@
 | 28 | [Ovis-Image Technical Report](Diffusion/PAPER_Ovis-Image.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2511.22982) | [github](https://github.com/AIDC-AI/Ovis-Image) | 2026-06-19 |
 | 27 | [Query-Kontext: An Unified Multimodal Model for Image Generation and Editing](Diffusion/PAPER_Query-Kontext.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2509.26641) | - | 2026-06-19 |
 | 26 | [MiniT2I: A Minimalist Baseline for Text-to-Image Generation](Diffusion/PAPER_MiniT2I.md) | Blog 2026 | [blog](https://peppaking8.github.io/#/post/minit2i) | [github](https://github.com/Hope7Happiness/minit2i-torch) | 2026-06-18 |
-| 25 | [TUNA-2: Encoder-free Native Unified Multimodal Model](Diffusion/PAPER_TUNA-2.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2604.24763) | [github](https://github.com/facebookresearch/tuna-2) | 2026-06-17 |
 | 24 | [TREAD: Token Routing for Efficient Architecture-agnostic Diffusion Training](Diffusion/PAPER_TREAD.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2501.04765) | - | 2026-06-17 |
 | 23 | [REPA: Representation Alignment for Generation](Diffusion/PAPER_REPA.md) | ICLR 2025 (Oral) | [arxiv](https://arxiv.org/abs/2410.06940) | [github](https://github.com/sihyun-yu/REPA) | 2026-06-17 |
 | 22 | [EMA: Exponential Moving Average of Model Weights (Algorithm Reference)](Diffusion/PAPER_EMA.md) | Algorithm Ref | [ddpm](https://arxiv.org/abs/2006.11239) | - | 2026-06-16 |
@@ -39,11 +38,12 @@
 
 ## 📂 Diffusion-Native-Unified
 
-> 사전학습된 VLM(vision-language model) 백본을 그대로 재사용하고, 여기에 diffusion head/모듈을 얹어 이해(understanding)와 생성(generation)을 한 모델로 통합한 native unified multimodal 계열.
+> 사전학습된 **LLM/VLM 백본**을 그대로 재사용하고, 여기에 픽셀 어댑터 + diffusion head/모듈을 얹어 이해(understanding)와 생성(generation)을 한 모델로 통합한 native unified multimodal 계열. VLM 백본(HiDream-O1, SenseNova-U1) / LLM 백본 + 인코더 제거(TUNA-2) 모두 포함.
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
-| 2 | [SenseNova-U1: Unifying Multimodal Understanding and Generation with NEO-unify Architecture](Diffusion-Native-Unified/PAPER_SenseNova-U1.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.12500) | [github](https://github.com/OpenSenseNova/SenseNova-U1) | 2026-06-19 |
+| 3 | [SenseNova-U1: Unifying Multimodal Understanding and Generation with NEO-unify Architecture](Diffusion-Native-Unified/PAPER_SenseNova-U1.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.12500) | [github](https://github.com/OpenSenseNova/SenseNova-U1) | 2026-06-19 |
+| 2 | [TUNA-2: Encoder-free Native Unified Multimodal Model](Diffusion-Native-Unified/PAPER_TUNA-2.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2604.24763) | [github](https://github.com/facebookresearch/tuna-2) | 2026-06-17 |
 | 1 | [HiDream-O1-Image: A Natively Unified Image Generative Foundation Model with Pixel-level Unified Transformer](Diffusion-Native-Unified/PAPER_HiDream-O1-Image.md) | Tech Report 2026 | [pdf](https://github.com/HiDream-ai/HiDream-O1-Image/blob/main/assets/HiDream-O1-Image.pdf) | [github](https://github.com/HiDream-ai/HiDream-O1-Image) | 2026-06-02 |
 
 ## 📂 Diffusion-Edit
