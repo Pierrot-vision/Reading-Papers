@@ -60,11 +60,11 @@
 | 2 | [UniCustom: Unified Visual Conditioning for Multi-Reference Image Generation](Diffusion/PAPER_UniCustom.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.12088) | - | 2026-05-27 |
 | 1 | [Any2AnyTryon: Leveraging Adaptive Position Embeddings for Versatile Virtual Clothing Tasks](Diffusion-Edit/PAPER_Any2AnyTryon.md) | ICCV 2025 | [arxiv](https://arxiv.org/abs/2501.15891) | [github](https://github.com/logn-2024/Any2anyTryon) | 2026-05-27 |
 
-## 📂 Diffusion-Post Training
+## 📂 Diffusion-Post-Training
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
-| 1 | [Qwen-Image-2.0-RL: RLHF + On-Policy Distillation Recipe](Diffusion-Post%20Training/PAPER_Qwen-Image-2.0-RL.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.27608) | - | 2026-06-19 |
+| 1 | [Qwen-Image-2.0-RL: RLHF + On-Policy Distillation Recipe](Diffusion-Post-Training/PAPER_Qwen-Image-2.0-RL.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.27608) | - | 2026-06-19 |
 
 ## 📂 Diffusion-Distillation
 
