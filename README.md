@@ -8,6 +8,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 30 | [SeFi-Image: A Text-to-Image Foundation Model with Semantic-First Diffusion](Diffusion/PAPER_SeFi-Image.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.22568) | [github](https://github.com/jmliu206/SeFi-Image) | 2026-07-06 |
 | 29 | [i1: A Recipe for Text-to-Image Diffusion from Public Materials](Diffusion/PAPER_i1.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.11289) | [github](https://github.com/zlab-princeton/i1) | 2026-06-19 |
 | 28 | [Ovis-Image Technical Report](Diffusion/PAPER_Ovis-Image.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2511.22982) | [github](https://github.com/AIDC-AI/Ovis-Image) | 2026-06-19 |
 | 27 | [Query-Kontext: An Unified Multimodal Model for Image Generation and Editing](Diffusion/PAPER_Query-Kontext.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2509.26641) | - | 2026-06-19 |
@@ -42,7 +43,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
-| 3 | [SenseNova-U1: Unifying Multimodal Understanding and Generation with NEO-unify Architecture](Diffusion-Native-Unified/PAPER_SenseNova-U1.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.12500) | [github](https://github.com/OpenSenseNova/SenseNova-U1) | 2026-06-19 |
+| 3 | [SenseNova-U1: Unifying Multimodal Understanding and Generation with NEO-unify Architecture](Diffusion-Native-Unified/PAPER_SenseNova-U1.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.12500) | [github](https://github.com/OpenSenseNova/SenseNova-U1) | 2026-07-06 |
 | 2 | [TUNA-2: Encoder-free Native Unified Multimodal Model](Diffusion-Native-Unified/PAPER_TUNA-2.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2604.24763) | [github](https://github.com/facebookresearch/tuna-2) | 2026-06-17 |
 | 1 | [HiDream-O1-Image: A Natively Unified Image Generative Foundation Model with Pixel-level Unified Transformer](Diffusion-Native-Unified/PAPER_HiDream-O1-Image.md) | Tech Report 2026 | [pdf](https://github.com/HiDream-ai/HiDream-O1-Image/blob/main/assets/HiDream-O1-Image.pdf) | [github](https://github.com/HiDream-ai/HiDream-O1-Image) | 2026-06-02 |
 
