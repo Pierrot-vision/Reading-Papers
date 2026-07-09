@@ -1,5 +1,7 @@
 # Reading-Papers
 
+> 🎭 **[PIERROT](https://github.com/Pierrot-vision/Pierrot)** — 1인 이미지 생성 모델 개발 프로젝트 (0.857B · Flow Matching · 4D RoPE). 이 저장소는 그 개발 과정에서 참고한 논문·알고리즘 리뷰 모음입니다.
+
 논문 리뷰 정리. 주제별 폴더 안에 `PAPER_*.md` 형식으로 보관합니다. 테이블은 **최신 업데이트가 위쪽**.
 
 ---
@@ -9,7 +11,7 @@
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
 | 32 | [Gemma 4 Technical Report](Diffusion/PAPER_Gemma-4.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2607.02770) | - | 2026-07-08 |
-| 31 | [SFD: Semantics Lead the Way — Harmonizing Semantic and Texture Modeling with Asynchronous Latent Diffusion](Diffusion/PAPER_SFD.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2512.04926) | [project](https://yuemingpan.github.io/SFD.github.io/) | 2026-07-08 |
+| 31 | [SFD: Semantics Lead the Way — Harmonizing Semantic and Texture Modeling with Asynchronous Latent Diffusion](Diffusion/PAPER_SFD.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2512.04926) | [project](https://yuemingpan.github.io/SFD.github.io/) | 2026-07-09 |
 | 30 | [SeFi-Image: A Text-to-Image Foundation Model with Semantic-First Diffusion](Diffusion/PAPER_SeFi-Image.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.22568) | [github](https://github.com/jmliu206/SeFi-Image) | 2026-07-06 |
 | 29 | [i1: A Recipe for Text-to-Image Diffusion from Public Materials](Diffusion/PAPER_i1.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.11289) | [github](https://github.com/zlab-princeton/i1) | 2026-06-19 |
 | 28 | [Ovis-Image Technical Report](Diffusion/PAPER_Ovis-Image.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2511.22982) | [github](https://github.com/AIDC-AI/Ovis-Image) | 2026-06-19 |
