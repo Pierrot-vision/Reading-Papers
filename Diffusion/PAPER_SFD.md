@@ -7,10 +7,10 @@
 | **논문 제목** | Semantics Lead the Way: Harmonizing Semantic and Texture Modeling with Asynchronous Latent Diffusion |
 | **저자** | Yueming Pan, Ruoyu Feng, Qi Dai, Yuqi Wang, Wenfeng Lin, Mingyu Guo, Chong Luo, Nanning Zheng |
 | **소속** | ¹IAIR, 시안교통대(Xi'an Jiaotong University) · ²Microsoft Research Asia · ³ByteDance (제1저자 Pan은 MSRA 인턴 중 수행) |
-| **공개일** | 2025-12 (arXiv v2: 2025-12-05) |
+| **공개일** | 2025-12 (arXiv v2: 2025-12-05) · **CVPR 2026 accepted** |
 | **분야** | Latent Diffusion, class-conditional 이미지 생성, 학습 효율화 |
 | **논문 링크** | [arXiv abstract](https://arxiv.org/abs/2512.04926) / [PDF](https://arxiv.org/pdf/2512.04926) |
-| **코드/프로젝트** | https://yuemingpan.github.io/SFD.github.io/ |
+| **코드/프로젝트** | [프로젝트 페이지](https://yuemingpan.github.io/SFD.github.io/) · [GitHub YuemingPan/SFD](https://github.com/YuemingPan/SFD) · [HF SFD-Project/SFD](https://huggingface.co/SFD-Project/SFD) — **완전 공개**(추론+학습 코드, SemVAE, diffusion 가중치). 공개 현황 상세는 Q6 참조 |
 | **사용한 외부 모델** | DINOv2-B with registers(의미 인코더, 동결), SD-VAE f16d32(텍스처 인코더), LightningDiT(백본), REPA(보조 손실), AutoGuidance(가이던스) |
 | **후속 논문** | [[paper_sefi_image]] — 같은 SFD 방법을 T2I 파운데이션 규모(1B~5B)로 확장한 자매 논문. 핵심 저자(Ruoyu Feng 등) 공유 |
 
@@ -282,6 +282,113 @@ $$\hat{v} = [M_s \odot \hat{v}_s,\; M_z \odot \hat{v}_z]$$
 | 기여 | **방법 제안·증명** | **스케일 검증·풀스택 레시피·모델 릴리스** |
 
 본 논문이 "밑그림 먼저"라는 아이디어를 장난감 세팅에서 증명했고, SeFi가 "그게 진짜 대형 T2I에서도 통하나?"를 확인했다.
+
+### Q4. SemVAE의 역할·의미를 자세히
+
+> SemVAE는 SFD에서 "새로 학습시킨 부품" 중 거의 유일한 것이라 정확히 이해하면 SFD 전체가 선명해진다. (구조·손실 값은 알고리즘 2절과 중복되므로 여기선 역할·비대칭·비유 중심)
+
+**SemVAE 한 줄 정체**: DINOv2가 뽑아낸 의미 feature를, diffusion이 다루기 좋은 작고 매끈한 잠재(latent)로 눌러주는 초경량 압축기(어댑터). Transformer 4블록, 겨우 29M 파라미터.
+
+**⚠️ 가장 중요한 오해 방지 — 입력이 이미지가 아니다.** 보통 VAE(SD-VAE 같은)는 이미지 픽셀을 받는다. SemVAE는 다르다.
+- 입력 = 이미지가 아니라 **DINOv2-B가 이미지를 보고 뽑아낸 patch feature**(이미지를 한 번 "이해"한 결과물)
+- 파이프라인이 두 단: 이미지 → (DINOv2, 동결) → 고차원 의미 feature → (SemVAE) → 압축된 의미 latent
+
+DINOv2 feature는 채널이 768차원으로 너무 크다. 그대로 diffusion 대상으로 삼으면 노이즈 스케줄을 대대적으로 뜯어고쳐야 한다(RAE가 실제로 겪은 문제). SemVAE가 이걸 16채널로 눌러준다.
+
+**왜 필요한가 — 3가지 역할**
+1. **차원 다이어트(어댑터)**: 768채널 DINOv2 feature를 16채널로 눌러, DiT가 의미를 텍스처와 같은 격자·같은 노이즈 스케줄 위에서 다룰 수 있게 함
+2. **의미 앵커 제공**: SFD의 "먼저 완성되는 밑그림"이 바로 이 의미 latent s. 텍스처가 매 순간 컨닝하는 대상
+3. **작은 모델이 배우기 쉬운 공간 만들기**: 압축된 매끈한 잠재 공간이라 작은 diffusion 모델도 "이 공간에서 의미 생성"을 쉽게 학습
+
+**🔑 핵심 비대칭 — 학습 때와 생성 때 쓰임이 완전히 다르다.** 이게 SemVAE의 진짜 정체를 드러낸다.
+
+| | 학습(training) | 생성(inference) |
+|---|---|---|
+| SemVAE **인코더** | ✅ 필요 — 정답 의미 latent s를 만들어 DiT에게 "이렇게 생성하라"고 가르침 | ❌ 안 씀 |
+| SemVAE **디코더** | △ SemVAE 자기 훈련 때만(복원 손실 계산) | ❌ 안 씀 |
+| 의미 latent s | DiT의 학습 타깃 | DiT가 **노이즈에서 직접 생성**, 다 쓰면 **버림** |
+
+생성할 때는 의미 latent를 이미지에서 인코딩하는 게 아니라 순수 노이즈에서 DiT가 직접 만들어낸다. 디노이징이 끝나면 의미 latent는 버리고 텍스처 latent만 디코딩해 최종 이미지를 얻는다. 그래서 SemVAE 디코더는 생성 경로에 아예 등장하지 않는다.
+
+**비유**: 텍스처 VAE(SD-VAE)가 최종 그림을 뽑아내는 **인쇄기**라면, SemVAE는 DiT를 가르칠 "정답 밑그림"을 만드는 **학습 교재 제작기**다. 수업이 끝나면 교재 제작기는 필요 없고 인쇄기만 남는다.
+
+**학습 손실 3종의 의미** (MSE + 코사인 + KL 1e-7, 한 번 학습 후 동결):
+- **MSE**: 복원한 feature가 원래 DINOv2 feature와 값이 같도록 (충실도)
+- **코사인 유사도**: 두 feature 벡터의 방향이 같도록. DINOv2 feature는 원래 방향(각도)으로 의미를 비교하는 표현이라 방향 보존이 의미 보존에 중요
+- **KL**: 잠재를 대략 가우시안으로 매끈하게 정규화 — 단 가중치가 거의 0이라 "복원 최우선, 정규화는 살짝만"
+
+**왜 PCA가 아니라 SemVAE?** ReDi는 DINOv2 feature를 PCA(선형 차원축소)로 압축했는데, ablation(Table 4)에서 PCA 4.06 vs SemVAE 3.03. PCA는 선형 투영이라 의미 정보를 일부 잃고, SemVAE는 학습된 비선형 압축기라 의미 완결성을 더 잘 보존한다. "압축은 하되 의미는 온전히 남긴다"가 SemVAE의 존재 이유.
+
+**한 줄 요약**: SemVAE = DINOv2의 고차원 의미 feature를 16채널 잠재로 눌러 "DiT가 먼저 생성할 밑그림 공간"을 만드는 학습용 압축기. 생성 때는 인코더도 디코더도 안 쓰이고(의미 latent는 DiT가 노이즈에서 직접 만들어 마지막에 버림), 오직 DiT에게 정답을 가르치기 위한 교재 제작기 역할.
+
+### Q5. SeFi-Image에서 쓰는 SemVAE는 이것과 동일한가?
+
+**핵심: "청사진(설계·레시피)은 동일, 실물(학습된 인스턴스)은 다르다."**
+
+**동일한 부분 (설계 철학·구조·레시피)** — 같은 팀의 같은 SemVAE 레시피라 뼈대가 그대로다.
+
+| 항목 | SFD(원논문) | SeFi-Image |
+|---|---|---|
+| 구조 | Transformer 4블록 인코더/디코더 | **동일** (Transformer 4블록) |
+| 입력 | 이미지가 아니라 DINOv2 feature | **동일** |
+| 압축 방향 | 채널만 압축, 토큰 배치 유지 | **동일** |
+| 손실 | MSE + 코사인 + KL(1e-7) | **동일** (MSE + cos + 1e-7·KL) |
+| 학습 후 | 동결, 생성 때 인코더/디코더 안 씀(의미 latent는 버림) | **동일** |
+
+즉 "DINOv2 feature를 16차원급 매끈한 잠재로 눌러 밑그림 공간을 만든다"는 정체성은 완전히 같다.
+
+**다른 부분 (학습된 실물이 다름)**
+
+| 항목 | SFD | SeFi-Image | 왜 다른가 |
+|---|---|---|---|
+| **먹이는 VFM** | DINOv2-**B**(`dinov2_vitb14_reg`) | DINOv2-**Large**(`dinov2_vitl14_reg`) | SeFi가 더 큰 의미 인코더를 씀 → SemVAE가 압축해야 할 입력 자체가 다름 |
+| **짝이 되는 텍스처 VAE** | SD-VAE f16d32(32ch) | FLUX.2 VAE(미세조정, 128ch) | 나란히 concat할 상대 격자·채널이 다르니 SemVAE도 거기 맞춰 학습 |
+| **출력 채널수** | 16채널 | **16채널** (checkpoint 메타 `latent_dim`=16로 확정) | **동일** — 둘 다 ch16 |
+| **토큰 수** | 256 (256² 단일) | 256 (`count_tokens`÷`count_images`=5.12M/20K) + 멀티 해상도 | SeFi는 더 다양한 토큰 수도 처리 |
+
+**결론**: "같은 도면으로 찍어냈지만 백본 규격이 달라진 다른 개체"다. 아키텍처·손실·역할·출력채널(16)까지 판박이라 개념적으로 "동일한 SemVAE"이며, config 경로(`dinov2_vitl14_ch16.yaml`)·폴더 규칙(`transformer_ch16`)이 SFD 레포와 일치해 **같은 코드베이스에 백본만 B→L 교체**임이 코드로 증명된다. 단 학습된 가중치는 서로 호환되지 않는 별개 체크포인트다. (공개 현황은 Q6 참조)
+
+### Q6. SemVAE는 공개됐나? (SFD / SeFi 각각)
+
+> 왜 이 절이 있나: SFD 계열 재현의 핵심 부품이 SemVAE인데, 두 논문의 공개 정책이 정반대라 헷갈리기 쉽다.
+
+**SFD(원논문) = 완전 공개 ✅**
+
+| 항목 | 위치 |
+|---|---|
+| SemVAE 모델 코드 | GitHub [YuemingPan/SFD](https://github.com/YuemingPan/SFD) `tokenizer/semvae/models/vae.py` (SwiGLU·ResBlock·TransformerBlock 구성) |
+| SemVAE 학습 코드 | `tokenizer/semvae/train.py` (2025.12.21 릴리스) |
+| DINOv2 feature 추출 | `tokenizer/semvae/extract_dinov2_feature.py` |
+| SemVAE 가중치 | HF [SFD-Project/SFD](https://huggingface.co/SFD-Project/SFD) `semantic_vae/*` (백본 `dinov2_vitb14_reg`, ch16) |
+| diffusion 학습 코드+가중치 | `train.py` + HF `model_weights/`(sfd_xl, sfd_1p0 등) |
+
+→ **처음부터 재학습 가능.** SemVAE를 직접 학습하거나 공개 가중치를 받아 쓸 수 있다.
+
+**SeFi-Image = SemVAE만 최근 공개(2026-07-04), 나머지 학습부는 비공개**
+
+- SemVAE 가중치: HF [SeFi-Image/SeFi-Image-SemVAE](https://huggingface.co/SeFi-Image/SeFi-Image-SemVAE) — **public, gated 아님, cc-by-nc-4.0(비상업)**
+  - 파일: `dinov2_vitl14_reg/transformer_ch16/checkpoints/checkpoint_01000000.pt`(1.23GB, 100만 스텝) + `latent_stats.pt`(정규화 통계 3KB)
+  - README에 사용법 없음 → **SFD 레포의 `tokenizer/semvae/` 코드로 로드**하는 구조
+  - `latent_stats.pt` 파싱으로 확정된 스펙: `latent_dim`=16, `vfm_model_name`=`dinov2_vitl14_reg`, 이미지당 256토큰, 정규화 통계는 내부 데이터셋 `image_600m`의 2만 장(512만 토큰)으로 산출
+- SemVAE 코드: SeFi 추론 레포([jmliu206/SeFi-Image](https://github.com/jmliu206/SeFi-Image))엔 없음. **SFD 레포 코드를 씀**
+- diffusion 본체 학습 코드·데이터: ❌ 여전히 비공개
+
+→ **SemVAE 자체는 받아 쓰거나 재학습 가능**하지만, SeFi diffusion 본체를 처음부터 완전 재학습하는 건 불가.
+
+### Q7. SemVAE를 씀으로써 얻는 장점은?
+
+> 왜 이 절이 있나: "왜 DINOv2 feature를 그냥 안 쓰고 굳이 한 번 더 압축하나?"가 SemVAE 존재 이유의 핵심.
+
+**한 줄**: SemVAE는 "DINOv2의 무거운 의미 지식"을 diffusion이 삼킬 수 있는 형태로 가공하는 어댑터이고, 그 덕분에 SFD의 나머지가 전부 가능해진다.
+
+1. **차원 다이어트 — 애초에 diffusion을 가능하게 (필수 조건)**: DINOv2 feature는 768/1024채널로 너무 커서 그대로 diffusion 대상 삼으면 노이즈 스케줄이 깨진다(RAE가 겪은 문제). SemVAE가 16채널로 눌러야 의미를 텍스처(32ch)와 같은 격자·같은 스케줄에 나란히 둘 수 있다. 이게 없으면 composite latent 구조 자체가 성립 안 함.
+2. **의미를 덜 잃는다 (vs 단순 압축)**: 같은 압축이라도 PCA(ReDi)는 FID 4.06, SemVAE는 3.03(Table 4). 학습된 비선형 압축이라 선형 투영보다 의미 완결성을 잘 보존.
+3. **매끈한 잠재 공간 (작은 모델도 배우기 쉬움)**: VAE의 KL 정규화로 가우시안에 가까운 매끈한 잠재를 만들어, 작은 diffusion 모델도 "이 공간에서 의미 생성"을 쉽게 학습. 100배 수렴의 밑바탕.
+4. **🔑 재구성-생성 트레이드오프를 깬다 (가장 중요)**: 의미를 SemVAE라는 별도 경로로 빼내므로, 텍스처 VAE는 의미 걱정 없이 순수 재구성용으로 극한 미세조정 가능. VA-VAE는 latent를 VFM에 정렬하느라 재구성을 희생했지만(rFID 0.28), SFD는 SD-VAE 그대로 써서 rFID 0.26. SeFi는 FLUX.2 VAE를 Kodak PSNR 33.18→36.40으로 끌어올림. "의미도 재구성도 둘 다 챙긴다."
+5. **토큰 정렬 유지 (합치기 쉬움)**: 채널만 압축하고 공간 배치(256토큰)는 유지 → 텍스처 토큰과 1:1 대응, 채널 concat이 깔끔하고 같은 RoPE 좌표 공유.
+6. **동결 백본 재사용의 다리**: DINOv2를 재학습 없이 동결한 채 그 시각 지식을 diffusion에 주입하는 통로. DiT가 "고양이란 무엇인가"를 처음부터 배울 필요가 없어짐.
+
+**냉정한 관점**: 이 장점들은 대부분 "DINOv2를 diffusion에 쓸 때 생기는 문제를 SemVAE가 메꾼다"는 성격이라, SemVAE가 새 능력을 창조한다기보다 **사전학습 백본을 매끄럽게 이어붙이는 접착제**에 가깝다.
 
 ---
 
