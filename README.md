@@ -10,7 +10,6 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
-| 32 | [Gemma 4 Technical Report](Diffusion/PAPER_Gemma-4.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2607.02770) | - | 2026-07-09 |
 | 31 | [SFD: Semantics Lead the Way — Harmonizing Semantic and Texture Modeling with Asynchronous Latent Diffusion](Diffusion/PAPER_SFD.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2512.04926) | [project](https://yuemingpan.github.io/SFD.github.io/) | 2026-07-09 |
 | 30 | [SeFi-Image: A Text-to-Image Foundation Model with Semantic-First Diffusion](Diffusion/PAPER_SeFi-Image.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.22568) | [github](https://github.com/jmliu206/SeFi-Image) | 2026-07-06 |
 | 29 | [i1: A Recipe for Text-to-Image Diffusion from Public Materials](Diffusion/PAPER_i1.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.11289) | [github](https://github.com/zlab-princeton/i1) | 2026-06-19 |
@@ -77,3 +76,11 @@
 |---|---|---|---|---|---|
 | 2 | [Improved Distribution Matching Distillation for Fast Image Synthesis](Diffusion-Distillation/PAPER_DMD2.md) | NeurIPS 2024 | [arxiv](https://arxiv.org/abs/2405.14867) | [github](https://github.com/tianweiy/dmd2) | 2026-05-22 |
 | 1 | [One-step Diffusion with Distribution Matching Distillation](Diffusion-Distillation/PAPER_DMD.md) | CVPR 2024 | [arxiv](https://arxiv.org/abs/2311.18828) | - | 2026-05-22 |
+
+## 📂 VLM
+
+> 다른 diffusion 논문의 텍스트 인코더/백본으로 자주 참조되는 LLM/VLM 계열.
+
+| No | Title | Venue | Paper | Code | Updated |
+|---|---|---|---|---|---|
+| 1 | [Gemma 4 Technical Report](VLM/PAPER_Gemma-4.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2607.02770) | - | 2026-07-09 |
