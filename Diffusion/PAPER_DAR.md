@@ -111,6 +111,18 @@ $$h_l = \sum_{i=0}^{l-1} \alpha_{i \to l}(t) \cdot v_i, \qquad \alpha_{i \to l}(
 
 즉 **층과 층 사이에 "깊이 방향 attention"을 한 번 더 거는 셈**. 토큰 방향이 아니라 역사(과거 층 출력들) 방향의 attention이라는 게 포인트. "non-incremental"인 이유: 직전 상태에 증분을 더하는 게 아니라 매 층마다 전체 역사에서 새로 조합해오기 때문.
 
+![Figure 4: DAR 전체 구조와 기존 방법 비교](figures/DAR_fig4.png)
+
+**Figure 4 읽는 법** — 논문의 구조 개요 그림으로, 왼쪽이 DAR, 오른쪽 아래가 기존 방식 두 가지다:
+
+- **왼쪽 (DAR 블록 스택)**: Attn → MLP가 반복되는 표준 DiT 스택인데, 각 sublayer **입력 자리마다 α 노드(분홍 원)**가 붙어 있다. 이 α 노드가 바로 "골라 담기" 지점 — 위쪽 화살표(block_k, block_{k-1} 등)로 과거 sublayer 출력들을, 아래쪽에서 **Chunk_{n-1}**(지나간 청크의 요약본, → 3절)을 후보로 받아 softmax 가중합으로 그 sublayer의 입력을 조립한다. residual 더하기(⊕)가 α 노드로 전부 교체된 그림.
+- **오른쪽 위 (α 수식과 query 두 갈래)**: α는 query와 key 내적의 softmax (Equation 5). 그 아래 중괄호가 query 파라미터화 — **dynamic**은 학습 행렬 W에 직전 출력 v를 곱한 것(t 암묵적), **static**은 학습 벡터 w 하나(+ t 주입 가능).
+- **오른쪽 아래 (비교 대상 두 가지)**:
+  - **Standard Residuals**: h_l → f → ⊕ → h_{l+1}. 변환 결과를 입력에 **무조건 더하는**(⊕) 증분 방식. 선택권이 없다.
+  - **U-Net-Like Skip**: block_0 → block_n처럼 멀리 떨어진 층을 **고정 배선**으로 잇는 long skip (U-Net/UViT 계열). 어디와 어디를 이을지가 설계 시점에 하드코딩되어 있고 timestep과 무관.
+
+한 눈에 요약하면: 기존 두 방식은 "무조건 더하기"(⊕) 아니면 "고정 배선"(skip)인데, DAR은 그 자리를 전부 **학습되는 α(softmax 선택)**로 바꿔서 *어느 층과 이어질지 자체를 데이터와 timestep이 결정*하게 만든 것이다. U-Net skip과 비교하는 이유도 여기 있다 — long skip은 "먼 층 정보가 유용하다"는 같은 직관의 수동 버전이고, DAR은 그 배선을 학습으로 대체한 자동 버전이다.
+
 **query 파라미터화 세 가지** (Equation 6):
 
 | 변형 | query 구성 | 추가 파라미터 |
@@ -122,6 +134,64 @@ $$h_l = \sum_{i=0}^{l-1} \alpha_{i \to l}(t) \cdot v_i, \qquad \alpha_{i \to l}(
 **timestep이 진짜 핵심 성분이라는 자기 증명** (Table 2, FID): t를 무시한 Static은 400K에서 11.51인데, t 주입만 하면 7.97, Dynamic은 8.10. Dynamic은 초반이 특히 빠름 (100K에서 13.95 vs t주입 17.39).
 
 **Dynamic이 t 명시 주입 없이도 되는 이유** (Figure 5 선형 프로브): 은닉 상태 $v_{l-1}$만 보고 t를 선형 회귀로 맞추면 원본 입력에서 R² ≈ 0.80, 블록 6 이후 R² ≈ 1.0 — **timestep 정보가 은닉 상태에 이미 완전히 새겨져 있어서** 암묵적 t-적응 routing이 가능.
+
+#### 참고 구현 (비공식 재구현)
+
+> 왜? — 공식 코드가 미공개(→ Q1)라, Equation 5~6을 PyTorch로 충실히 옮긴 나이브 버전을 남겨둔다.
+
+```python
+import torch, math
+import torch.nn as nn
+import torch.nn.functional as F
+
+class DARRouter(nn.Module):
+    """
+    층 l의 입력 h_l 을 과거 sublayer 출력 v_0..v_{l-1} 의
+    softmax 가중합으로 조립 (Eq. 5).  Static + t-주입 변형 (Eq. 6).
+    """
+    def __init__(self, dim):
+        super().__init__()
+        self.w = nn.Parameter(torch.zeros(dim))   # 층별 학습 query 벡터 w_l
+        self.key_norm = nn.RMSNorm(dim)           # k_i = RMSNorm(v_i)
+
+    def forward(self, history, t_emb):
+        # history: 과거 출력 리스트, 각 (B, N, d) — l개
+        # t_emb:   기존 timestep embedding e(t), (B, d) — 추가 파라미터 0
+        V = torch.stack(history, dim=2)           # (B, N, l, d)
+        K = self.key_norm(V)                      # (B, N, l, d)
+        q = self.w + t_emb                        # (B, d)  ← static + t 주입
+        logits = torch.einsum('bd,bnld->bnl', q, K) / math.sqrt(V.shape[-1])
+        alpha = logits.softmax(dim=-1)            # 깊이 방향 softmax (가중치 합=1)
+        return torch.einsum('bnl,bnld->bnd', alpha, V)   # h_l
+
+
+class DARBlock(nn.Module):
+    """표준 DiT 블록에서 'x = x + f(x)' 를 'h = route(역사); v = f(h)' 로 교체."""
+    def __init__(self, dim, num_heads):
+        super().__init__()
+        self.route_attn, self.route_mlp = DARRouter(dim), DARRouter(dim)
+        self.attn = Attention(dim, num_heads)     # 기존 DiT 것 그대로
+        self.mlp  = Mlp(dim)
+        self.norm1, self.norm2 = nn.LayerNorm(dim), nn.LayerNorm(dim)
+
+    def forward(self, history, t_emb):
+        h = self.route_attn(history, t_emb)       # ⊕ 대신 골라 담기
+        history.append(self.attn(self.norm1(h)))  # v를 역사에 등록 (더하지 않음!)
+        h = self.route_mlp(history, t_emb)
+        history.append(self.mlp(self.norm2(h)))
+        return history
+
+# 사용: history = [x_embed]  로 시작해서 블록마다 history를 넘김.
+# Dynamic 변형은 q = W_q @ history[-1] (토큰별 query, t_emb 불필요)
+```
+
+핵심이 표준 블록과 다른 지점은 두 줄: `x = x + attn(...)`이 사라지고, (1) 입력을 `route(history)`로 조립하고 (2) sublayer 출력을 **더하지 않고 history에 append만** 한다.
+
+**읽을 때 주의점 세 가지**:
+
+- **청크 압축(Eq. 7)은 뺐다.** 실제로는 history가 무한정 길어지지 않게 지나간 청크(S=4)를 요약본 하나로 접는데, 요약본을 정확히 어떻게 만드는지(경계에서의 라우팅 결과인지, 별도 풀링인지)는 논문 본문에서 세부가 얇아 재구성이 논문과 다를 수 있어 참고 구현에서는 제외.
+- **이 나이브 버전은 느리다.** history 전체를 stack하는 방식이라 논문 벤치마크 기준 forward 22.5ms — 논문은 이걸 fused Triton 커널(온라인 softmax로 소스를 메모리에서 1회만 읽음)로 1.96ms까지 줄였고(→ 4절), 그 커널이 바로 공개 안 된 부분. 학습용으로 진지하게 쓰려면 이 커널 재현이 실질적인 관문.
+- **비공식 재구현**이라는 점 — 수식(Eq. 5, 6)과 Figure 4 구조에는 충실하지만, norm 위치나 최종 aggregator 같은 잔디테일은 논문에 명시가 없어 표준 관례로 채움.
 
 ### 3. Chunked Aggregation: 메모리 폭탄 처리
 
@@ -252,6 +322,8 @@ SiT-XL/2 (L=56): α ∈ [0.4, 0.6]에서 S* ∈ [3.7, 4.9] 예측 → 실측(Tab
 - GitHub 검색에서도 공식·비공식 구현 모두 안 잡힘
 
 재현 관점에서 특히 아쉬운 점: 이 방법의 실용성이 fused Triton 커널(→ 알고리즘 4절)에 크게 기대고 있다. 수식 자체(softmax 가중 깊이 집계 + 청크 압축)는 논문만 보고 재구현할 수 있는 수준이지만, 커널 없이 나이브하게 구현하면 학습이 상당히 느려져 실전 투입 장벽이 높다. v2 개정(2026-06-16)까지 나온 시점에도 공개가 없는 걸 보면 당분간은 기대하기 어려워 보인다.
+
+논문 수식대로 옮긴 비공식 PyTorch 참고 구현은 → 알고리즘 2절 "참고 구현" 참조.
 
 ### Q2. MoE(Mixture of Experts)의 컨셉을 가져온 건가?
 
