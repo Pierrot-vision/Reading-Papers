@@ -83,6 +83,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 4 | [PaliGemma: A versatile 3B VLM for transfer](VLM/PAPER_PaliGemma.md) | arXiv 2024 | [arxiv](https://arxiv.org/abs/2407.07726) | - | 2026-07-15 |
 | 3 | [Phi-4-Mini Technical Report: Compact yet Powerful Multimodal Language Models via Mixture-of-LoRAs](VLM/PAPER_Phi-4-Mini.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2503.01743) | - | 2026-07-09 |
 | 2 | [Gemma 3 Technical Report](VLM/PAPER_Gemma-3.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2503.19786) | - | 2026-07-09 |
 | 1 | [Gemma 4 Technical Report](VLM/PAPER_Gemma-4.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2607.02770) | - | 2026-07-09 |
