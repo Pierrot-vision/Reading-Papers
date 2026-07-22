@@ -84,8 +84,9 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 7 | [nanoVLM: A Lightweight Vision Language Model Toolkit](VLM/PAPER_nanoVLM.md) | HF Blog 2025 | [blog](https://huggingface.co/blog/nanovlm) | [github](https://github.com/huggingface/nanoVLM) | 2026-07-22 |
 | 6 | [SmolVLM: Redefining small and efficient multimodal models](VLM/PAPER_SmolVLM.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2504.05299) | [hf](https://huggingface.co/blog/smolvlm) | 2026-07-15 |
-| 5 | [PaliGemma 2: A Family of Versatile VLMs for Transfer](VLM/PAPER_PaliGemma-2.md) | arXiv 2024 | [arxiv](https://arxiv.org/abs/2412.03555) | [github](https://github.com/google-research/big_vision) | 2026-07-21 |
+| 5 | [PaliGemma 2: A Family of Versatile VLMs for Transfer](VLM/PAPER_PaliGemma-2.md) | arXiv 2024 | [arxiv](https://arxiv.org/abs/2412.03555) | [github](https://github.com/google-research/big_vision) | 2026-07-22 |
 | 4 | [PaliGemma: A versatile 3B VLM for transfer](VLM/PAPER_PaliGemma.md) | arXiv 2024 | [arxiv](https://arxiv.org/abs/2407.07726) | - | 2026-07-15 |
 | 3 | [Phi-4-Mini Technical Report: Compact yet Powerful Multimodal Language Models via Mixture-of-LoRAs](VLM/PAPER_Phi-4-Mini.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2503.01743) | - | 2026-07-09 |
 | 2 | [Gemma 3 Technical Report](VLM/PAPER_Gemma-3.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2503.19786) | - | 2026-07-09 |
