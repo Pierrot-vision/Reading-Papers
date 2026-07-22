@@ -279,6 +279,50 @@ nanoVLM은 논문이 아니라 **지속 업데이트되는 저장소 + 튜토리
 
 기여 가이드에 "Trainer·accelerate·deepspeed 의존성을 추가하는 PR은 받지 않는다"고 못박아 뒀다. 이유는 **교육 목적**이다. 이 라이브러리들은 학습 루프·분산처리·혼합정밀도를 자동으로 처리해 편하지만, 그만큼 내부를 가려 "무슨 일이 일어나는지" 안 보이게 한다. nanoVLM은 gradient accumulation·DDP·bf16 autocast·cosine 스케줄을 전부 손으로 써서 보여준다(`train.py` ~200줄). "마법을 걷어내는 것"이 목적이므로 마법을 다시 넣는 건 취지에 반한다.
 
+### Q6. SmolVLM과 정확히 뭐가 다른가?
+
+*이 질문 자체가 "왜/무엇"이라 도입부 면제.*
+
+둘은 **같은 HuggingFace 팀 + 거의 같은 부품**(SmolLM2 + SigLIP + pixel shuffle)이라, 진짜 차이는 성능이 아니라 **"제품/논문(product)이냐, 교재(baseline)냐"**라는 성격에 있다.
+
+**성격 차이**
+
+| 항목 | **nanoVLM** | **SmolVLM** |
+|---|---|---|
+| 본질 | 교육용 baseline **저장소** (nanoGPT의 VLM 판) | 배포용 SOTA 소형 VLM **제품 + 논문** |
+| 1차 목표 | "VLM이 안에서 어떻게 도는가" 이해시키기 | 온디바이스(on-device)에서 실제로 잘 쓰이는 모델 만들기 |
+| 코드 철학 | 순수 파이토치 **750줄**, `Trainer`·`accelerate`·`deepspeed` **일부러 거부** | `transformers`에 정식 통합된 프로덕션 모델 |
+| 산출물 | 읽으라고 만든 참조 구현 | 9개 설계 규칙(Findings) + 완전 공개 생태계 |
+
+**구성 요소 (거의 동일 — nanoVLM이 SmolVLM 레시피를 물려받음)**
+
+| 부품 | **nanoVLM** | **SmolVLM** |
+|---|---|---|
+| 눈 (인코더) | SigLIP2-B/16-512 (초판 SigLIP-224 85M) | SigLIP-B/16 (93M) 또는 SO400M (428M) |
+| 입 (LM) | SmolLM2 (135M / 360M) | SmolLM2 (135M / 360M / 1.7B) |
+| 다리 (연결부) | pixel shuffle **r=4** (16배) + Linear 1장 | pixel shuffle **r=3~4** (9~16배) + projection |
+| 이미지 토큰 수 | 이미지당 **64토큰** | 81토큰(2B, r=3) / 64토큰(소형, r=4) |
+| 이미지 분할 | 있음 (**SmolVLM 방식을 차용**) | 있음 (원조, UReader/SPHINX 계열) |
+| 위치 토큰 | 학습 특수토큰 `<row_i_col_j>` 8×8 | 학습 위치 토큰 (문자열 금지 = Finding 5) |
+
+**스코프 차이 (SmolVLM이 훨씬 큼)**
+
+| 항목 | **nanoVLM** | **SmolVLM** |
+|---|---|---|
+| 크기 라인업 | 222M / 450M | 256M / 500M / 2.2B |
+| 학습 | 단일 SFT | 2단계(vision→video) SFT + DPO 어댑터 |
+| 비디오 | ❌ 미지원 | ✅ 정식 지원 (3.5분 최적) |
+| 데이터 | the_cauldron 1.7M → FineVision | The Cauldron + Docmatix + 비디오 |
+| ablation/설계 규칙 | 없음 (교육 목적) | **9개 Findings** (논문의 핵심 기여) |
+| 컨텍스트 확장 | 기본 (max_length 4096) | RoPE base 273K로 8K~16K 확장 |
+| 배포 생태계 | Colab 튜토리얼 | 브라우저(WebGPU)·모바일 앱·SmolDocling 등 |
+
+**흥미로운 포인트 — 성능은 거의 같다**
+
+가장 작은 모델끼리 비교하면 **MMStar에서 nanoVLM-222M은 35.3%, SmolVLM-256M은 34.6%**로 사실상 동급이다. 이게 두 프로젝트의 관계를 잘 보여준다 — nanoVLM은 SmolVLM이 ablation으로 검증한 레시피(작은 인코더 + 공격적 pixel shuffle + 학습 위치 토큰 + 이미지 분할)를 **최소 코드로 다시 구현한 것**이라, 같은 급 성능이 자연스럽게 나온다.
+
+**한 줄 정리**: SmolVLM은 "소형 VLM을 **어떻게 설계해야 하는지** 규칙 9개로 증명한 제품+논문"이고, nanoVLM은 "그 규칙들이 녹아든 최소 구조를 **누구나 읽고 고칠 수 있게** 750줄로 벌거벗긴 교재"다. 부품은 형제지간, 목적은 정반대. (SmolVLM 상세는 [[paper_smolvlm]] 참조)
+
 ---
 
 ## ✅ 한 줄 요약 (전체)
