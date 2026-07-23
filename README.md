@@ -10,6 +10,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 33 | [Mage-Flow: A 4B Image Generation and Editing Stack with Mage-VAE](Diffusion/PAPER_Mage-Flow.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2607.19064) | [github](https://github.com/microsoft/Mage) | 2026-07-23 |
 | 32 | [DAR: Rethinking Cross-Layer Information Routing in Diffusion Transformers](Diffusion/PAPER_DAR.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.20708) | - | 2026-07-15 |
 | 31 | [SFD: Semantics Lead the Way — Harmonizing Semantic and Texture Modeling with Asynchronous Latent Diffusion](Diffusion/PAPER_SFD.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2512.04926) | [project](https://yuemingpan.github.io/SFD.github.io/) | 2026-07-09 |
 | 30 | [SeFi-Image: A Text-to-Image Foundation Model with Semantic-First Diffusion](Diffusion/PAPER_SeFi-Image.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.22568) | [github](https://github.com/jmliu206/SeFi-Image) | 2026-07-06 |
@@ -55,6 +56,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 10 | [Mage-Flow: A 4B Image Generation and Editing Stack with Mage-VAE](Diffusion/PAPER_Mage-Flow.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2607.19064) | [github](https://github.com/microsoft/Mage) | 2026-07-23 |
 | 9 | [Query-Kontext: An Unified Multimodal Model for Image Generation and Editing](Diffusion/PAPER_Query-Kontext.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2509.26641) | - | 2026-06-19 |
 | 8 | [Tstars-Tryon 1.0: Industrial-Grade Virtual Try-On](Diffusion-Edit/PAPER_Tstars-Tryon.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2604.19748) | - | 2026-06-15 |
 | 7 | [UniRef-Image-Edit: Towards Scalable and Consistent Multi-Reference Image Editing](Diffusion-Edit/PAPER_UniRef-Image-Edit.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2602.14186) | - | 2026-06-10 |
@@ -84,6 +86,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 8 | [Florence-2: Advancing a Unified Representation for a Variety of Vision Tasks](VLM/PAPER_Florence-2.md) | CVPR 2024 | [arxiv](https://arxiv.org/abs/2311.06242) | - | 2026-07-23 |
 | 7 | [nanoVLM: A Lightweight Vision Language Model Toolkit](VLM/PAPER_nanoVLM.md) | HF Blog 2025 | [blog](https://huggingface.co/blog/nanovlm) | [github](https://github.com/huggingface/nanoVLM) | 2026-07-22 |
 | 6 | [SmolVLM: Redefining small and efficient multimodal models](VLM/PAPER_SmolVLM.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2504.05299) | [hf](https://huggingface.co/blog/smolvlm) | 2026-07-15 |
 | 5 | [PaliGemma 2: A Family of Versatile VLMs for Transfer](VLM/PAPER_PaliGemma-2.md) | arXiv 2024 | [arxiv](https://arxiv.org/abs/2412.03555) | [github](https://github.com/google-research/big_vision) | 2026-07-22 |
