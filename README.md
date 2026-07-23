@@ -26,7 +26,7 @@
 | 19 | [DDT: Decoupled Diffusion Transformer](Diffusion/PAPER_DDT.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2504.05741) | [github](https://github.com/MCG-NJU/DDT) | 2026-06-10 |
 | 18 | [PixelDiT: Towards Pixel-Space Image Generation via Single-Stage Diffusion Transformer](Diffusion/PAPER_PixelDiT.md) | CVPR 2026 | [arxiv](https://arxiv.org/abs/2511.20645) | [github](https://github.com/NVlabs/PixelDiT) | 2026-06-10 |
 | 17 | [Qwen-Image-2.0 Technical Report](Diffusion/PAPER_Qwen-Image-2.0.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.10730) | [github](https://github.com/QwenLM/Qwen-Image) | 2026-06-04 |
-| 16 | [Qwen-Image Technical Report](Diffusion/PAPER_Qwen-Image.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2508.02324) | [github](https://github.com/QwenLM/Qwen-Image) | 2026-06-16 |
+| 16 | [Qwen-Image Technical Report](Diffusion/PAPER_Qwen-Image.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2508.02324) | [github](https://github.com/QwenLM/Qwen-Image) | 2026-07-23 |
 | 15 | [Nucleus-Image: Sparse MoE for Image Generation](Diffusion/PAPER_Nucleus-Image.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2604.12163) | - | 2026-06-02 |
 | 14 | [PiD: Fast and High-Resolution Latent Decoding with Pixel Diffusion](Diffusion/PAPER_PiD.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.23902) | [github](https://github.com/nv-tlabs/PiD) | 2026-06-19 |
 | 13 | [Lumina-Image 2.0: A Unified and Efficient Image Generative Model](Diffusion/PAPER_Lumina-Image-2.0.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2503.21758) | [github](https://github.com/Alpha-VLLM/Lumina-Image-2.0) | 2026-05-29 |
