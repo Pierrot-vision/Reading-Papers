@@ -10,7 +10,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
-| 33 | [Mage-Flow: A 4B Image Generation and Editing Stack with Mage-VAE](Diffusion/PAPER_Mage-Flow.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2607.19064) | [github](https://github.com/microsoft/Mage) | 2026-07-23 |
+| 33 | [Mage-Flow: A 4B Image Generation and Editing Stack with Mage-VAE](Diffusion/PAPER_Mage-Flow.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2607.19064) | [github](https://github.com/microsoft/Mage) | 2026-07-29 |
 | 32 | [DAR: Rethinking Cross-Layer Information Routing in Diffusion Transformers](Diffusion/PAPER_DAR.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.20708) | - | 2026-07-15 |
 | 31 | [SFD: Semantics Lead the Way — Harmonizing Semantic and Texture Modeling with Asynchronous Latent Diffusion](Diffusion/PAPER_SFD.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2512.04926) | [project](https://yuemingpan.github.io/SFD.github.io/) | 2026-07-09 |
 | 30 | [SeFi-Image: A Text-to-Image Foundation Model with Semantic-First Diffusion](Diffusion/PAPER_SeFi-Image.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.22568) | [github](https://github.com/jmliu206/SeFi-Image) | 2026-07-06 |
@@ -86,7 +86,10 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
-| 8 | [Florence-2: Advancing a Unified Representation for a Variety of Vision Tasks](VLM/PAPER_Florence-2.md) | CVPR 2024 | [arxiv](https://arxiv.org/abs/2311.06242) | - | 2026-07-23 |
+| 11 | [Qwen3-VL Technical Report](VLM/PAPER_Qwen3-VL.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2511.21631) | [github](https://github.com/QwenLM/Qwen3-VL) | 2026-07-29 |
+| 10 | [LFM2 Technical Report](VLM/PAPER_LFM2.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2511.23404) | - | 2026-07-29 |
+| 9 | [BLIP-2: Bootstrapping Language-Image Pre-training with Frozen Image Encoders and Large Language Models](VLM/PAPER_BLIP-2.md) | ICML 2023 | [arxiv](https://arxiv.org/abs/2301.12597) | [github](https://github.com/salesforce/LAVIS) | 2026-07-29 |
+| 8 | [Florence-2: Advancing a Unified Representation for a Variety of Vision Tasks](VLM/PAPER_Florence-2.md) | CVPR 2024 | [arxiv](https://arxiv.org/abs/2311.06242) | - | 2026-07-29 |
 | 7 | [nanoVLM: A Lightweight Vision Language Model Toolkit](VLM/PAPER_nanoVLM.md) | HF Blog 2025 | [blog](https://huggingface.co/blog/nanovlm) | [github](https://github.com/huggingface/nanoVLM) | 2026-07-22 |
 | 6 | [SmolVLM: Redefining small and efficient multimodal models](VLM/PAPER_SmolVLM.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2504.05299) | [hf](https://huggingface.co/blog/smolvlm) | 2026-07-15 |
 | 5 | [PaliGemma 2: A Family of Versatile VLMs for Transfer](VLM/PAPER_PaliGemma-2.md) | arXiv 2024 | [arxiv](https://arxiv.org/abs/2412.03555) | [github](https://github.com/google-research/big_vision) | 2026-07-22 |
@@ -94,3 +97,9 @@
 | 3 | [Phi-4-Mini Technical Report: Compact yet Powerful Multimodal Language Models via Mixture-of-LoRAs](VLM/PAPER_Phi-4-Mini.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2503.01743) | - | 2026-07-09 |
 | 2 | [Gemma 3 Technical Report](VLM/PAPER_Gemma-3.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2503.19786) | - | 2026-07-09 |
 | 1 | [Gemma 4 Technical Report](VLM/PAPER_Gemma-4.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2607.02770) | - | 2026-07-09 |
+
+## 📂 OCR-Detection
+
+| No | Title | Venue | Paper | Code | Updated |
+|---|---|---|---|---|---|
+| 1 | [CRAFT: Character Region Awareness for Text Detection](OCR-Detection/PAPER_CRAFT.md) | CVPR 2019 | [arxiv](https://arxiv.org/abs/1904.01941) | [github](https://github.com/clovaai/CRAFT-pytorch) | 2026-07-29 |
