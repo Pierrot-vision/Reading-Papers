@@ -70,7 +70,7 @@ Depth Anything V2는 지금 이미지·비디오·3D 생성 파이프라인에�
 ### 비교 대상 모델
 
 - **MiDaS** — relative depth 학습의 원조 격. scale-shift-invariant loss로 여러 데이터셋을 섞어 쓰는 방식을 정립.
-- **Depth Anything V1** — 같은 저자들의 전작. labeled real data 62만 장 + unlabeled real 6,200만 장을 함께 쓰는 semi-supervised(준지도) 방식.
+- **Depth Anything V1** — 같은 저자들의 전작. labeled real data **150만 장** + unlabeled real 6,200만 장을 함께 쓰는 semi-supervised(준지도) 방식. → 상세: [PAPER_Depth-Anything.md](PAPER_Depth-Anything.md)
 - **Marigold / GeoWizard / DepthFM** — Stable Diffusion을 개조한 **generative model(생성형) 계열** depth 추정기. 디테일은 좋지만 느리고 무겁다.
 - **ZoeDepth** — metric depth의 대표 baseline.
 - **SAM(Segment Anything Model)** — Meta의 범용 분할 모델. 여기서는 DA-2K 벤치마크 제작 시 **물체 마스크 자동 추출**에 사용.
