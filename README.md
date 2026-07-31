@@ -98,12 +98,12 @@
 | 2 | [Gemma 3 Technical Report](VLM/PAPER_Gemma-3.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2503.19786) | - | 2026-07-09 |
 | 1 | [Gemma 4 Technical Report](VLM/PAPER_Gemma-4.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2607.02770) | - | 2026-07-09 |
 
-## 📂 OCR-Detection
+## 📂 OCR
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
-| 2 | [TrOCR: Transformer-based Optical Character Recognition with Pre-trained Models](OCR-Detection/PAPER_TrOCR.md) | AAAI 2023 | [arxiv](https://arxiv.org/abs/2109.10282) | [github](https://github.com/microsoft/unilm/tree/master/trocr) | 2026-07-31 |
-| 1 | [CRAFT: Character Region Awareness for Text Detection](OCR-Detection/PAPER_CRAFT.md) | CVPR 2019 | [arxiv](https://arxiv.org/abs/1904.01941) | [github](https://github.com/clovaai/CRAFT-pytorch) | 2026-07-29 |
+| 2 | [TrOCR: Transformer-based Optical Character Recognition with Pre-trained Models](OCR/PAPER_TrOCR.md) | AAAI 2023 | [arxiv](https://arxiv.org/abs/2109.10282) | [github](https://github.com/microsoft/unilm/tree/master/trocr) | 2026-07-31 |
+| 1 | [CRAFT: Character Region Awareness for Text Detection](OCR/PAPER_CRAFT.md) | CVPR 2019 | [arxiv](https://arxiv.org/abs/1904.01941) | [github](https://github.com/clovaai/CRAFT-pytorch) | 2026-07-29 |
 
 ## 📂 3D
 
