@@ -109,4 +109,5 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 2 | [Depth Anything: Unleashing the Power of Large-Scale Unlabeled Data](3D/PAPER_Depth-Anything.md) | CVPR 2024 | [arxiv](https://arxiv.org/abs/2401.10891) | [github](https://github.com/LiheYoung/Depth-Anything) | 2026-07-31 |
 | 1 | [Depth Anything V2](3D/PAPER_Depth-Anything-V2.md) | NeurIPS 2024 | [arxiv](https://arxiv.org/abs/2406.09414) | [github](https://github.com/DepthAnything/Depth-Anything-V2) | 2026-07-31 |
