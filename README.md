@@ -102,4 +102,11 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 2 | [TrOCR: Transformer-based Optical Character Recognition with Pre-trained Models](OCR-Detection/PAPER_TrOCR.md) | AAAI 2023 | [arxiv](https://arxiv.org/abs/2109.10282) | [github](https://github.com/microsoft/unilm/tree/master/trocr) | 2026-07-31 |
 | 1 | [CRAFT: Character Region Awareness for Text Detection](OCR-Detection/PAPER_CRAFT.md) | CVPR 2019 | [arxiv](https://arxiv.org/abs/1904.01941) | [github](https://github.com/clovaai/CRAFT-pytorch) | 2026-07-29 |
+
+## 📂 3D
+
+| No | Title | Venue | Paper | Code | Updated |
+|---|---|---|---|---|---|
+| 1 | [Depth Anything V2](3D/PAPER_Depth-Anything-V2.md) | NeurIPS 2024 | [arxiv](https://arxiv.org/abs/2406.09414) | [github](https://github.com/DepthAnything/Depth-Anything-V2) | 2026-07-31 |
