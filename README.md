@@ -86,7 +86,8 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
-| 11 | [Qwen3-VL Technical Report](VLM/PAPER_Qwen3-VL.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2511.21631) | [github](https://github.com/QwenLM/Qwen3-VL) | 2026-07-29 |
+| 12 | [Penguin-VL: Exploring the Efficiency Limits of VLM with LLM-based Vision Encoders](VLM/PAPER_Penguin-VL.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2603.06569) | [github](https://github.com/tencent-ailab/Penguin-VL) | 2026-08-04 |
+| 11 | [Qwen3-VL Technical Report](VLM/PAPER_Qwen3-VL.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2511.21631) | [github](https://github.com/QwenLM/Qwen3-VL) | 2026-08-04 |
 | 10 | [LFM2 Technical Report](VLM/PAPER_LFM2.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2511.23404) | - | 2026-07-29 |
 | 9 | [BLIP-2: Bootstrapping Language-Image Pre-training with Frozen Image Encoders and Large Language Models](VLM/PAPER_BLIP-2.md) | ICML 2023 | [arxiv](https://arxiv.org/abs/2301.12597) | [github](https://github.com/salesforce/LAVIS) | 2026-07-29 |
 | 8 | [Florence-2: Advancing a Unified Representation for a Variety of Vision Tasks](VLM/PAPER_Florence-2.md) | CVPR 2024 | [arxiv](https://arxiv.org/abs/2311.06242) | - | 2026-07-29 |
@@ -97,6 +98,17 @@
 | 3 | [Phi-4-Mini Technical Report: Compact yet Powerful Multimodal Language Models via Mixture-of-LoRAs](VLM/PAPER_Phi-4-Mini.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2503.01743) | - | 2026-07-09 |
 | 2 | [Gemma 3 Technical Report](VLM/PAPER_Gemma-3.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2503.19786) | - | 2026-07-09 |
 | 1 | [Gemma 4 Technical Report](VLM/PAPER_Gemma-4.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2607.02770) | - | 2026-07-09 |
+
+## 📂 VLM-OCR
+
+> VLM 기반 문서 파싱/OCR 계열. 전통적 검출·인식 모델은 아래 OCR 챕터.
+
+| No | Title | Venue | Paper | Code | Updated |
+|---|---|---|---|---|---|
+| 4 | [PaddleOCR-VL-1.6: Expanding the Frontier of Document Parsing with Under-Optimized Region Refinement and Progressive Post-Training](VLM-OCR/PAPER_PaddleOCR-VL-1.6.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.03264) | [github](https://github.com/PaddlePaddle/PaddleOCR) | 2026-08-04 |
+| 3 | [MinerU2.5-Pro: Pushing the Limits of Data-Centric Document Parsing at Scale](VLM-OCR/PAPER_MinerU2.5-Pro.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2604.04771) | [github](https://github.com/opendatalab/MinerU) | 2026-08-04 |
+| 2 | [GLM-OCR Technical Report](VLM-OCR/PAPER_GLM-OCR.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2603.10910) | [github](https://github.com/zai-org/GLM-OCR) | 2026-08-04 |
+| 1 | [DeepSeek-OCR: Contexts Optical Compression](VLM-OCR/PAPER_DeepSeek-OCR.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2510.18234) | [github](https://github.com/deepseek-ai/DeepSeek-OCR) | 2026-08-04 |
 
 ## 📂 OCR
 
@@ -109,5 +121,6 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 3 | [SAM 3D Body: Robust Full-Body Human Mesh Recovery](3D/PAPER_SAM-3D-Body.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2602.15989) | [github](https://github.com/facebookresearch/sam-3d-body) | 2026-08-04 |
 | 2 | [Depth Anything: Unleashing the Power of Large-Scale Unlabeled Data](3D/PAPER_Depth-Anything.md) | CVPR 2024 | [arxiv](https://arxiv.org/abs/2401.10891) | [github](https://github.com/LiheYoung/Depth-Anything) | 2026-07-31 |
 | 1 | [Depth Anything V2](3D/PAPER_Depth-Anything-V2.md) | NeurIPS 2024 | [arxiv](https://arxiv.org/abs/2406.09414) | [github](https://github.com/DepthAnything/Depth-Anything-V2) | 2026-07-31 |
