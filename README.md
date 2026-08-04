@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/reading-papers-banner.png" width="100%" alt="Reading-Papers banner"/>
+  <img src="docs/reading-papers-banner.png?v=2" width="100%" alt="Reading-Papers banner"/>
 </p>
 
 <h1 align="center">📚 Reading-Papers</h1>
