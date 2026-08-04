@@ -1,4 +1,8 @@
-# Reading-Papers
+<p align="center">
+  <img src="docs/reading-papers-banner.png" width="100%" alt="Reading-Papers banner"/>
+</p>
+
+<h1 align="center">📚 Reading-Papers</h1>
 
 > 🎭 **[PIERROT](https://github.com/Pierrot-vision/Pierrot)** — 1인 이미지 생성 모델 개발 프로젝트 (0.857B · Flow Matching · 4D RoPE). 이 저장소는 그 개발 과정에서 참고한 논문·알고리즘 리뷰 모음입니다.
 
