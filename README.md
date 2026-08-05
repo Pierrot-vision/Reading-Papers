@@ -105,6 +105,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 6 | [MinerU2.5: A Decoupled Vision-Language Model for Efficient High-Resolution Document Parsing](VLM-OCR/PAPER_MinerU2.5.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2509.22186) | [github](https://github.com/opendatalab/MinerU) | 2026-08-05 |
 | 5 | [ColPali: Efficient Document Retrieval with Vision Language Models](VLM-OCR/PAPER_ColPali.md) | ICLR 2025 | [arxiv](https://arxiv.org/abs/2407.01449) | [github](https://github.com/illuin-tech/colpali) | 2026-08-04 |
 | 4 | [PaddleOCR-VL-1.6: Expanding the Frontier of Document Parsing with Under-Optimized Region Refinement and Progressive Post-Training](VLM-OCR/PAPER_PaddleOCR-VL-1.6.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.03264) | [github](https://github.com/PaddlePaddle/PaddleOCR) | 2026-08-04 |
 | 3 | [MinerU2.5-Pro: Pushing the Limits of Data-Centric Document Parsing at Scale](VLM-OCR/PAPER_MinerU2.5-Pro.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2604.04771) | [github](https://github.com/opendatalab/MinerU) | 2026-08-04 |
