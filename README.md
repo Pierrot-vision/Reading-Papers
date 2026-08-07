@@ -6,8 +6,6 @@
 
 <p align="center">
   <a href="#-diffusion"><img src="https://img.shields.io/badge/Diffusion-blueviolet.svg" alt="Diffusion"/></a>
-  <a href="#-diffusion-post-training"><img src="https://img.shields.io/badge/Post--Training-ff69b4.svg" alt="Diffusion-Post-Training"/></a>
-  <a href="#-diffusion-distillation"><img src="https://img.shields.io/badge/Distillation-orange.svg" alt="Diffusion-Distillation"/></a>
   <a href="#-vlm"><img src="https://img.shields.io/badge/VLM-brightgreen.svg" alt="VLM"/></a>
   <a href="#-vlm-ocr"><img src="https://img.shields.io/badge/VLM--OCR-yellowgreen.svg" alt="VLM-OCR"/></a>
   <a href="#-ocr"><img src="https://img.shields.io/badge/OCR-yellow.svg" alt="OCR"/></a>
