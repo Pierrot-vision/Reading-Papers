@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  이 공간은 🎭 <b><a href="https://github.com/Pierrot-vision/Pierrot">Pierrot Universe</a></b> 안에 구현되어 있는 관련/참조 연구들과, 연구자가 관심 있는 분야의 연구들을 리뷰하는 공간입니다.
+  이 공간은 🎭 <b><a href="https://github.com/Pierrot-vision">Pierrot Universe</a></b> 안에 구현되어 있는 관련/참조 연구들과, 연구자가 관심 있는 분야의 연구들을 리뷰하는 공간입니다.
 </p>
 
 ---
