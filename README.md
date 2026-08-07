@@ -4,6 +4,22 @@
 
 <h1 align="center">📚 Reading-Papers</h1>
 
+<p align="center">
+  <a href="#-diffusion"><img src="https://img.shields.io/badge/Diffusion-blueviolet.svg" alt="Diffusion"/></a>
+  <a href="#-diffusion-native-unified"><img src="https://img.shields.io/badge/Native--Unified-blue.svg" alt="Diffusion-Native-Unified"/></a>
+  <a href="#-diffusion-edit"><img src="https://img.shields.io/badge/Edit-informational.svg" alt="Diffusion-Edit"/></a>
+  <a href="#-diffusion-post-training"><img src="https://img.shields.io/badge/Post--Training-ff69b4.svg" alt="Diffusion-Post-Training"/></a>
+  <a href="#-diffusion-distillation"><img src="https://img.shields.io/badge/Distillation-orange.svg" alt="Diffusion-Distillation"/></a>
+  <a href="#-vlm"><img src="https://img.shields.io/badge/VLM-brightgreen.svg" alt="VLM"/></a>
+  <a href="#-vlm-ocr"><img src="https://img.shields.io/badge/VLM--OCR-yellowgreen.svg" alt="VLM-OCR"/></a>
+  <a href="#-ocr"><img src="https://img.shields.io/badge/OCR-yellow.svg" alt="OCR"/></a>
+  <a href="#-3d"><img src="https://img.shields.io/badge/3D-red.svg" alt="3D"/></a>
+</p>
+
+<p align="center">
+  이 공간은 🎭 <b><a href="https://github.com/Pierrot-vision/Pierrot">Pierrot Universe</a></b> 안에 구현되어 있는 관련/참조 연구들과, 연구자가 관심 있는 분야의 연구들을 리뷰하는 공간입니다.
+</p>
+
 ---
 
 ## 📂 Diffusion
