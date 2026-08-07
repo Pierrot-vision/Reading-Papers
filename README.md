@@ -56,7 +56,7 @@
 
 ## 📂 Diffusion-Native-Unified
 
-> 사전학습된 **LLM/VLM 백본**을 그대로 재사용하고, 여기에 픽셀 어댑터 + diffusion head/모듈을 얹어 이해(understanding)와 생성(generation)을 한 모델로 통합한 native unified multimodal 계열. VLM 백본(HiDream-O1, SenseNova-U1) / LLM 백본 + 인코더 제거(TUNA-2) 모두 포함.
+> 사전학습된 **LLM/VLM을 백본으로 재사용**해, 하나의 모델이 이미지 이해와 생성을 모두 하는 unified 계열.
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
