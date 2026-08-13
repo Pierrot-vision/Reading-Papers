@@ -117,11 +117,11 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
-| 6 | [MinerU2.5: A Decoupled Vision-Language Model for Efficient High-Resolution Document Parsing](VLM-OCR/PAPER_MinerU2.5.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2509.22186) | [github](https://github.com/opendatalab/MinerU) | 2026-08-05 |
+| 6 | [MinerU2.5: A Decoupled Vision-Language Model for Efficient High-Resolution Document Parsing](VLM-OCR/PAPER_MinerU2.5.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2509.22186) | [github](https://github.com/opendatalab/MinerU) | 2026-08-13 |
 | 5 | [ColPali: Efficient Document Retrieval with Vision Language Models](VLM-OCR/PAPER_ColPali.md) | ICLR 2025 | [arxiv](https://arxiv.org/abs/2407.01449) | [github](https://github.com/illuin-tech/colpali) | 2026-08-04 |
-| 4 | [PaddleOCR-VL-1.6: Expanding the Frontier of Document Parsing with Under-Optimized Region Refinement and Progressive Post-Training](VLM-OCR/PAPER_PaddleOCR-VL-1.6.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.03264) | [github](https://github.com/PaddlePaddle/PaddleOCR) | 2026-08-04 |
-| 3 | [MinerU2.5-Pro: Pushing the Limits of Data-Centric Document Parsing at Scale](VLM-OCR/PAPER_MinerU2.5-Pro.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2604.04771) | [github](https://github.com/opendatalab/MinerU) | 2026-08-04 |
-| 2 | [GLM-OCR Technical Report](VLM-OCR/PAPER_GLM-OCR.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2603.10910) | [github](https://github.com/zai-org/GLM-OCR) | 2026-08-04 |
+| 4 | [PaddleOCR-VL-1.6: Expanding the Frontier of Document Parsing with Under-Optimized Region Refinement and Progressive Post-Training](VLM-OCR/PAPER_PaddleOCR-VL-1.6.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.03264) | [github](https://github.com/PaddlePaddle/PaddleOCR) | 2026-08-13 |
+| 3 | [MinerU2.5-Pro: Pushing the Limits of Data-Centric Document Parsing at Scale](VLM-OCR/PAPER_MinerU2.5-Pro.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2604.04771) | [github](https://github.com/opendatalab/MinerU) | 2026-08-13 |
+| 2 | [GLM-OCR Technical Report](VLM-OCR/PAPER_GLM-OCR.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2603.10910) | [github](https://github.com/zai-org/GLM-OCR) | 2026-08-13 |
 | 1 | [DeepSeek-OCR: Contexts Optical Compression](VLM-OCR/PAPER_DeepSeek-OCR.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2510.18234) | [github](https://github.com/deepseek-ai/DeepSeek-OCR) | 2026-08-04 |
 
 ## 📂 OCR
@@ -135,6 +135,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 4 | [Multi-view Reconstruction via SfM-guided Monocular Depth Estimation](3D/PAPER_Murre.md) | CVPR 2025 (Oral) | [arxiv](https://arxiv.org/abs/2503.14483) | [github](https://github.com/zju3dv/Murre) | 2026-08-13 |
 | 3 | [SAM 3D Body: Robust Full-Body Human Mesh Recovery](3D/PAPER_SAM-3D-Body.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2602.15989) | [github](https://github.com/facebookresearch/sam-3d-body) | 2026-08-04 |
 | 2 | [Depth Anything: Unleashing the Power of Large-Scale Unlabeled Data](3D/PAPER_Depth-Anything.md) | CVPR 2024 | [arxiv](https://arxiv.org/abs/2401.10891) | [github](https://github.com/LiheYoung/Depth-Anything) | 2026-07-31 |
 | 1 | [Depth Anything V2](3D/PAPER_Depth-Anything-V2.md) | NeurIPS 2024 | [arxiv](https://arxiv.org/abs/2406.09414) | [github](https://github.com/DepthAnything/Depth-Anything-V2) | 2026-07-31 |
