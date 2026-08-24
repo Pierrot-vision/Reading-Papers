@@ -98,7 +98,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
-| 12 | [Penguin-VL: Exploring the Efficiency Limits of VLM with LLM-based Vision Encoders](VLM/PAPER_Penguin-VL.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2603.06569) | [github](https://github.com/tencent-ailab/Penguin-VL) | 2026-08-04 |
+| 12 | [Penguin-VL: Exploring the Efficiency Limits of VLM with LLM-based Vision Encoders](VLM/PAPER_Penguin-VL.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2603.06569) | [github](https://github.com/tencent-ailab/Penguin-VL) | 2026-08-24 |
 | 11 | [Qwen3-VL Technical Report](VLM/PAPER_Qwen3-VL.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2511.21631) | [github](https://github.com/QwenLM/Qwen3-VL) | 2026-08-04 |
 | 10 | [LFM2 Technical Report](VLM/PAPER_LFM2.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2511.23404) | - | 2026-07-29 |
 | 9 | [BLIP-2: Bootstrapping Language-Image Pre-training with Frozen Image Encoders and Large Language Models](VLM/PAPER_BLIP-2.md) | ICML 2023 | [arxiv](https://arxiv.org/abs/2301.12597) | [github](https://github.com/salesforce/LAVIS) | 2026-07-29 |
@@ -135,7 +135,8 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
-| 4 | [Multi-view Reconstruction via SfM-guided Monocular Depth Estimation](3D/PAPER_Murre.md) | CVPR 2025 (Oral) | [arxiv](https://arxiv.org/abs/2503.14483) | [github](https://github.com/zju3dv/Murre) | 2026-08-13 |
+| 5 | [DUSt3R: Geometric 3D Vision Made Easy](3D/PAPER_DUSt3R.md) | CVPR 2024 | [arxiv](https://arxiv.org/abs/2312.14132) | [github](https://github.com/naver/dust3r) | 2026-08-24 |
+| 4 | [Multi-view Reconstruction via SfM-guided Monocular Depth Estimation](3D/PAPER_Murre.md) | CVPR 2025 (Oral) | [arxiv](https://arxiv.org/abs/2503.14483) | [github](https://github.com/zju3dv/Murre) | 2026-08-24 |
 | 3 | [SAM 3D Body: Robust Full-Body Human Mesh Recovery](3D/PAPER_SAM-3D-Body.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2602.15989) | [github](https://github.com/facebookresearch/sam-3d-body) | 2026-08-04 |
 | 2 | [Depth Anything: Unleashing the Power of Large-Scale Unlabeled Data](3D/PAPER_Depth-Anything.md) | CVPR 2024 | [arxiv](https://arxiv.org/abs/2401.10891) | [github](https://github.com/LiheYoung/Depth-Anything) | 2026-07-31 |
 | 1 | [Depth Anything V2](3D/PAPER_Depth-Anything-V2.md) | NeurIPS 2024 | [arxiv](https://arxiv.org/abs/2406.09414) | [github](https://github.com/DepthAnything/Depth-Anything-V2) | 2026-07-31 |
