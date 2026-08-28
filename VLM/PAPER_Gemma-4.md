@@ -126,6 +126,148 @@
 
 global attention 레이어에서 value projection(값 투영 행렬)을 두지 않고, key 텐서를 그대로 value로 쓴다. E2B/E4B는 제외 → 즉 **12B, 26B-A4B, 31B에 적용**.
 
+##### 코드로 보면 — `W_v`라는 행렬이 모델에 아예 없다
+
+*"value를 없앴다"는 건 계산 중에 뭘 지웠다는 게 아니라, 모델을 만들 때 **v를 만드는 부품을 안 달았다**는 뜻이다.*
+
+원래 attention은 입력 x 하나에서 **서로 다른 행렬 세 개**를 통과시켜 세 역할을 뽑는다.
+
+| | 역할 | 도서관 비유 |
+|---|---|---|
+| **q** (query) | 내가 뭘 찾는지 | "요리 관련 책 찾아줘" |
+| **k** (key) | 나를 찾는 기준 (색인) | 책등에 붙은 **분류 라벨** |
+| **v** (value) | 찾아지면 건넬 내용 | 책의 **본문** |
+
+`values=keys`는 **본문을 따로 안 쓰고, 라벨에 적힌 걸 그대로 본문으로 건네주는 것**이다.
+
+```python
+# ══════════ 표준 attention ══════════
+class Attention(nn.Module):
+    def __init__(self, d, n_head, n_kv, hd):
+        self.W_q = nn.Linear(d, n_head * hd, bias=False)
+        self.W_k = nn.Linear(d, n_kv   * hd, bias=False)
+        self.W_v = nn.Linear(d, n_kv   * hd, bias=False)   # ★ 이 줄이 있다
+        self.W_o = nn.Linear(n_head * hd, d, bias=False)
+
+    def forward(self, x, cache, pos):
+        q = self.W_q(x)                 # matmul 1
+        k = self.W_k(x)                 # matmul 2
+        v = self.W_v(x)                 # matmul 3  ← 이것도 돈다
+        q, k = rope(q, pos), rope(k, pos)          # k는 100% 회전
+        cache.append(k=k, v=v)          # ★ 두 텐서를 각각 저장 → 2d
+        k_all, v_all = cache.get()
+        out = softmax(q @ k_all.T / sqrt(hd)) @ v_all
+        return self.W_o(out)
+
+
+# ══════════ Gemma 4 global layer ══════════
+class GlobalAttention(nn.Module):
+    def __init__(self, d, n_head, n_kv, hd, p=0.25):
+        self.W_q = nn.Linear(d, n_head * hd, bias=False)
+        self.W_k = nn.Linear(d, n_kv   * hd, bias=False)
+        # self.W_v 가 아예 없다  ★ 파라미터도, 연산도, 캐시도 같이 사라짐
+        self.W_o = nn.Linear(n_head * hd, d, bias=False)
+        self.r = int(p * hd)            # 회전할 앞부분 크기
+
+    def forward(self, x, cache, pos):
+        q     = self.W_q(x)             # matmul 1
+        k_raw = self.W_k(x)             # matmul 2
+                                        # matmul 3 없음 ★
+        q = cat([rope(q[..., :self.r], pos), q[..., self.r:]])
+        k = cat([rope(k_raw[..., :self.r], pos), k_raw[..., self.r:]])
+        v = k_raw                       # ★ 새로 만드는 게 아니라 재사용
+
+        cache.append(base=k_raw,               # d
+                     rot =k[..., :self.r])     # 0.25d  → 합 1.25d
+        k_all, v_all = cache.get()
+        out = softmax(q @ k_all.T / sqrt(hd)) @ v_all
+        return self.W_o(out)
+```
+
+캐시 쪽을 들여다보면 이렇게 된다.
+
+```python
+# ══ 표준 캐시: 남남인 두 텐서 ══
+class KVCache:
+    def append(self, k, v):
+        self.k.append(k)        # d
+        self.v.append(v)        # d      → 총 2d
+    def get(self):
+        return cat(self.k), cat(self.v)
+
+# ══ Gemma 4 캐시: 겹치는 부분을 공유 ══
+class SharedKVCache:
+    def append(self, base, rot):
+        self.base.append(base)  # d      ← 회전 전 원본. 이게 곧 value
+        self.rot.append(rot)    # 0.25d  ← key의 앞부분만
+                                #          → 총 1.25d
+    def get(self):
+        base = cat(self.base)
+        k = cat([cat(self.rot), base[..., self.r:]])   # 회전본 + 원본 뒤쪽
+        v = base                                       # 원본 그대로
+        return k, v
+```
+
+`v = base`. **v를 위해 따로 들고 있는 메모리가 한 칸도 없다.**
+
+##### 없애서 얻는 것 세 가지 — 그런데 ①은 미미하다
+
+```
+W_v 삭제 ─┬─► ① 파라미터 감소   (행렬 하나가 통째로 사라짐)
+          ├─► ② 연산 감소       (매 토큰마다 matmul 한 번 덜)
+          └─► ③ KV cache 감소   ★ 이게 진짜 목적
+```
+
+31B를 d=5376, GQA로 kv 폭 1024라 놓으면 `W_v` 하나는 5376 × 1024 ≈ **5.5M**이다. global layer가 열 몇 개니 다 합쳐도 **60~70M, 31B의 0.2%**밖에 안 된다. **이건 "모델을 가볍게 하는 기법"이 아니다.** TL;DR의 표현대로 *"파라미터를 줄이는 대신 캐시해야 할 텐서 자체를 줄인다"* — ③이 목적이고 ①②는 부수입이다.
+
+#### ①-b ⚠️ 그런데 이건 성능에는 손해 아닌가 — 맞다. 개선이 아니라 거래다
+
+*여기서 반드시 짚어야 할 게 있다. "라벨을 본문으로 준다"는 건 **attention의 설계 원리를 거스르는 것**이다. 그럼 성능이 좋아졌다는 뜻인가? 아니다.*
+
+리포트가 `values=keys`에 대해 한 말은 이 한 문장이 전부다.
+
+> "We **improve memory efficiency** by re-using keys as values in the global attention layers"
+
+**improve memory efficiency.** 성능이 좋아졌다는 말은 **어디에도 없다.** 품질 비교표도, ablation도 없다. 즉 *"value 쓸 때보다 더 좋았나"* 는 **리포트가 애초에 주장하지 않은 것**이다.
+
+##### 왜 손해인가
+
+attention의 설계 자체가 **"찾는 기준"과 "건네줄 내용"을 분리한 것**이다.
+
+```
+k = "나를 언제 불러야 하는가"    (검색 조건)
+v = "불렸을 때 무엇을 줄 것인가"  (전달 내용)
+```
+
+"요리"라는 키워드로 찾아지지만 내용은 레시피여야 하는 책처럼, **찾히는 조건과 담긴 내용은 원래 다른 것**이다. 이걸 하나로 묶으면 `W_k`가 **겸직**하게 된다 — attention score도 맞춰야 하고 전달할 내용도 실어야 하니 둘 다 어중간해질 수밖에 없다. **표현력이 주는 게 맞다.**
+
+뒤따르는 `W_o`가 `W_v`의 일을 어느 정도 흡수할 수는 있다. 하지만 `W_o`는 **모든 head가 공유하는 하나의 행렬**이라, head마다 다른 변환을 하던 `W_v`를 대신할 수 없다. 손실을 줄여줄 뿐 없애주지 못한다.
+
+##### 결정적 정황: 작은 모델에서는 안 썼다
+
+리포트 원문이 못 박는다 — **"except in E2B and E4B"**.
+
+**공짜거나 더 좋은 기법이었다면 전 모델에 썼을 것이다.** 빼놨다는 건 저자들도 **대가가 있다는 걸 안다**는 뜻이다. 큰 모델은 파라미터 여유가 있어 겸직 부담을 흡수하지만, 작은 모델은 못 버티니 제외한 것으로 읽는 게 자연스럽다. (대신 E2B/E4B는 레이어 간 KV 공유라는 다른 방법을 쓴다 → ④)
+
+##### 그리고 이런 거래는 이미 업계 표준이다
+
+"attention 원리에 반한다"는 감각은 정확한데, **그 방향으로 이미 몇 년째 밀고 온 계보**가 있다.
+
+| | 무엇을 깎았나 | 대가 |
+|---|---|---|
+| **MHA** (원조) | — | 캐시가 head 수만큼 |
+| **MQA** (Shazeer 2019) | k·v를 head 하나로 통일 | 품질 저하 있음 — **원논문도 인정** |
+| **GQA** (Ainslie 2023) | k·v head를 그룹당 하나로 | MQA보다 완화, 지금 사실상 표준 |
+| **values=keys** (Gemma 4) | **v를 아예 삭제** | **측정된 바 없음** |
+
+지금 거의 모든 대형 모델이 GQA를 쓴다. **"표현력을 조금 내주고 KV cache를 크게 사는" 거래는 이미 기본값**이고, `values=keys`는 그 선을 한 칸 더 민 것이다.
+
+##### 왜 그 거래가 남는 장사인가
+
+[[paper_gemma_3]] 에 이미 나온 사실이 배경이다 — **양자화를 밀어붙일수록 KV cache만 병목으로 남는다.** 가중치는 int4로 4배 줄지만 KV cache 몫은 양자화해도 그대로다. E2B를 0.8GB에 밀어넣는 게 목표인 모델에게는 벤치마크 0.몇 점보다 그쪽이 급하다.
+
+**⚠️ 다만 근본 문제는 남는다 — 대가의 크기를 아무도 모른다.** 통제 비교가 없어서 "얼마를 내주고 37.5%를 샀는지" 알 수가 없다 (→ §이 리포트의 빈칸).
+
 #### ② pp-RoPE with p=0.25
 
 인용은 **Barbero et al., ICLR 2025 "Round and round we go! What makes rotary positional encodings useful?"**. 그 논문의 요지는 RoPE의 **저주파 회전 성분이 실은 위치 정보를 거의 안 나르고 오히려 의미 채널을 갉아먹는다**는 것이고, 처방이 **head 차원의 일부만 회전시키고 나머지는 회전 없이(NoPE) 두는 partial RoPE**다. `p=0.25`면 25%만 회전.
@@ -179,6 +321,49 @@ RoPE는 차원 쌍마다 **회전 속도가 다르다.** 앞쪽 차원은 빠르
 #### ③-b 왜 "회전된 앞 25%"를 굳이 따로 저장하는가
 
 *위 산수에서 제일 헷갈리는 게 이 줄이다. "value를 없앴다면서 왜 뭔가를 또 저장하지?" — 순서대로 풀어보면 답이 나온다.*
+
+##### 전제 0. RoPE는 위치를 "더하는" 게 아니라 q·k를 "회전"시킨다
+
+*여기서 흔한 오해 하나를 먼저 걷어야 한다 — "위치 벡터를 만들어 x에 더하는 것"으로 알고 있으면 이 절 전체가 안 읽힌다.*
+
+"위치 벡터를 만들어 입력에 더한다"는 건 **원조 Transformer의 sinusoidal PE(absolute positional embedding)** 방식이다. RoPE는 그걸 **대체하려고** 나온 것이라 셋 다 다르다.
+
+| | 원조 PE (더하는 방식) | **RoPE** |
+|---|---|---|
+| **무엇을 쓰나** | position (몇 번째인지) | position — **token id 아님** |
+| **어디에 거나** | 입력 임베딩에 **딱 한 번** | **q와 k에, 매 층마다** |
+| **어떻게** | **더한다** (add) | **회전시킨다** (곱) |
+| **v에 영향** | **간다** (임베딩에 더했으니 v에도 섞임) | **안 간다** |
+
+`token id`는 어휘 사전 번호다 — "cat"=1234 같은. 문장에서 몇 번째인지와는 아무 상관이 없다. RoPE가 쓰는 건 **position**(0, 1, 2, …)이다.
+
+```python
+# ══ 원조 방식: 위치 벡터를 만들어 더한다 ══
+x = embed_table[token_ids] + pos_table[positions]   # ★ 더하기, 딱 한 번
+for layer in layers:
+    q, k, v = W_q(x), W_k(x), W_v(x)   # 셋 다 위치가 섞인 x에서 나옴
+    ...                                 # → v에도 위치 정보가 들어가 있다
+
+# ══ RoPE: q와 k를 매 층 회전시킨다 ══
+x = embed_table[token_ids]              # ★ 위치 정보 없음. 순수 의미만
+for layer in layers:
+    q, k, v = W_q(x), W_k(x), W_v(x)
+    q = rotate(q, positions)            # ★ 곱하기, 매 층마다
+    k = rotate(k, positions)
+    # v는 손 안 댐  ← 위치 정보가 끝까지 안 들어간다
+```
+
+회전이 실제로 하는 일:
+
+```python
+def rotate(t, pos):
+    theta = pos * freq          # 위치 × 주파수 (차원 쌍마다 freq가 다름)
+    a, b = t[..., 0::2], t[..., 1::2]      # 숫자를 둘씩 짝지어
+    return interleave(a*cos(theta) - b*sin(theta),   # 2D 평면에서
+                      a*sin(theta) + b*cos(theta))   # 그 각도만큼 돌림
+```
+
+**그리고 이게 이 절 전체의 전제다.** 만약 원조 방식이었다면 위치 정보가 애초에 x에 섞여 있으니 **v도 이미 위치에 오염된 상태**고, "v를 깨끗하게 유지한다"는 얘기 자체가 성립하지 않는다. **RoPE가 v를 건드리지 않기 때문에** `values=keys`에서 "회전 전 원본을 v로 쓴다"가 의미를 갖는다.
 
 ##### 전제 1. RoPE는 원래부터 q와 k에만 건다
 
@@ -429,6 +614,24 @@ MTP 쪽은 그래도 구체적이다.
 *리포트에는 **구조 다이어그램도, 백본 하이퍼파라미터 표도 없다.** 그래서 §3의 서술 + Table 1 파라미터 분해 + Gemma 3에서 계승한 부분을 맞춰 "실제로 어떤 모양의 그래프인가"를 여기서 한 번 복원해 둔다. 추정 부분은 ⚠️로 표시한다.*
 
 ### 1. 전체 구조 — 입력 3갈래가 한 시퀀스로 합쳐진다
+
+![Gemma 4 overall architecture](figures/gemma4_fig1.png)
+
+*(리포트에 구조도가 없어 본 문서에서 직접 그린 것. LLaVA 논문 Figure 1 형식에 맞췄다.)*
+
+#### LLaVA와 대응시켜 보면
+
+| LLaVA | Gemma 4 |
+|---|---|
+| Vision Encoder → Projection W | **A)** ViT 150M/550M → pool  /  **B)** 35M matmul 한 장 (12B) |
+| — | **Audio 경로가 하나 더** (Conformer 305M 또는 직접 투영) |
+| H_v + H_q | H_v + **H_a** + H_q |
+| Language Model f_φ | 같은 자리인데 **내부가 L L L L L G 반복** ← 여기가 이 논문 |
+| Language Response X_a | 동일 — **출력은 텍스트뿐** |
+
+**LLaVA와 뼈대는 같다.** 인코더로 이미지를 토큰화해 텍스트 토큰 옆에 붙이고 LLM에 넣는 구조 그대로다. Gemma 4가 다른 건 세 곳 — ① 오디오 경로 추가, ② 12B는 인코더 자리가 행렬 한 장으로 대체(그림의 점선 박스), ③ **LLM 바 안쪽의 L/G 배치와 G 레이어의 KV 절감**(주황 콜아웃).
+
+#### 텍스트 버전
 
 ```
  [텍스트]            [이미지]                    [오디오]
