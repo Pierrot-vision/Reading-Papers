@@ -95,8 +95,6 @@
 
 ## 📂 VLM
 
-> 다른 diffusion 논문의 텍스트 인코더/백본으로 자주 참조되는 LLM/VLM 계열.
-
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
 | 12 | [Penguin-VL: Exploring the Efficiency Limits of VLM with LLM-based Vision Encoders](VLM/PAPER_Penguin-VL.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2603.06569) | [github](https://github.com/tencent-ailab/Penguin-VL) | 2026-08-24 |
@@ -113,8 +111,6 @@
 | 1 | [Gemma 4 Technical Report](VLM/PAPER_Gemma-4.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2607.02770) | - | 2026-08-28 |
 
 ## 📂 VLM-OCR
-
-> VLM 기반 문서 파싱/OCR 계열. 전통적 검출·인식 모델은 아래 OCR 챕터.
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
