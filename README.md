@@ -10,6 +10,7 @@
   <a href="#-vlm-ocr"><img src="https://img.shields.io/badge/VLM--OCR-yellowgreen.svg" alt="VLM-OCR"/></a>
   <a href="#-ocr"><img src="https://img.shields.io/badge/OCR-yellow.svg" alt="OCR"/></a>
   <a href="#-3d"><img src="https://img.shields.io/badge/3D-red.svg" alt="3D"/></a>
+  <a href="#-recommendation"><img src="https://img.shields.io/badge/Recommendation-lightgrey.svg" alt="Recommendation"/></a>
 </p>
 
 <p align="center">
@@ -135,8 +136,18 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 7 | [4DAnyone: Create Anyone in 4D from a Casual Monocular Video](3D/PAPER_4DAnyone.md) | SIGGRAPH Asia 2026 | [arxiv](https://arxiv.org/abs/2608.20335) | [github](https://github.com/ant-research/4DAnyone) | 2026-09-02 |
+| 6 | [DepthLab: From Partial to Complete](3D/PAPER_DepthLab.md) | arXiv 2024 | [arxiv](https://arxiv.org/abs/2412.18153) | [github](https://github.com/ant-research/DepthLab) | 2026-09-02 |
 | 5 | [DUSt3R: Geometric 3D Vision Made Easy](3D/PAPER_DUSt3R.md) | CVPR 2024 | [arxiv](https://arxiv.org/abs/2312.14132) | [github](https://github.com/naver/dust3r) | 2026-08-24 |
 | 4 | [Multi-view Reconstruction via SfM-guided Monocular Depth Estimation](3D/PAPER_Murre.md) | CVPR 2025 (Oral) | [arxiv](https://arxiv.org/abs/2503.14483) | [github](https://github.com/zju3dv/Murre) | 2026-08-24 |
 | 3 | [SAM 3D Body: Robust Full-Body Human Mesh Recovery](3D/PAPER_SAM-3D-Body.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2602.15989) | [github](https://github.com/facebookresearch/sam-3d-body) | 2026-08-04 |
 | 2 | [Depth Anything: Unleashing the Power of Large-Scale Unlabeled Data](3D/PAPER_Depth-Anything.md) | CVPR 2024 | [arxiv](https://arxiv.org/abs/2401.10891) | [github](https://github.com/LiheYoung/Depth-Anything) | 2026-07-31 |
 | 1 | [Depth Anything V2](3D/PAPER_Depth-Anything-V2.md) | NeurIPS 2024 | [arxiv](https://arxiv.org/abs/2406.09414) | [github](https://github.com/DepthAnything/Depth-Anything-V2) | 2026-07-31 |
+
+## 📂 Recommendation
+
+> 추천/검색(retrieval) 계열.
+
+| No | Title | Venue | Paper | Code | Updated |
+|---|---|---|---|---|---|
+| 1 | [Fashion Outfit Complementary Item Retrieval](Recommendation/PAPER_CSA-Net.md) | CVPR 2020 | [paper](https://openaccess.thecvf.com/content_CVPR_2020/papers/Lin_Fashion_Outfit_Complementary_Item_Retrieval_CVPR_2020_paper.pdf) | - | 2026-09-02 |
