@@ -13,6 +13,7 @@
 | **논문 PDF** | https://openaccess.thecvf.com/content_CVPR_2020/papers/Lin_Fashion_Outfit_Complementary_Item_Retrieval_CVPR_2020_paper.pdf |
 | **약칭** | **CSA-Net** (Category-based Subspace Attention Network) |
 | **코드** | ❌ **미공개** (Amazon 사내 논문) |
+| **비공식 구현** | [Jungjaewon/Fashion_Outfit...](https://github.com/Jungjaewon/Fashion_Outfit_Complementary_Item_Retrieval) (`a447b66`), [bigohofone/csa-net](https://github.com/bigohofone/csa-net) (`07db8e4`) — **둘 다 실행 불가·논문 미재현**, 상세는 Q3 |
 | **데이터셋** | Polyvore Outfits [16] (Vasileva et al., ECCV 2018) — disjoint / non-disjoint 두 세트 |
 | **베이스 모델** | ResNet18 (ImageNet 사전학습), embedding size 64 |
 | **ANN 라이브러리** | hnswlib (https://github.com/nmslib/hnswlib) |
@@ -230,6 +231,8 @@ $$l(O, p, N) = \max(0,\; D_p - D_N + m) \qquad (7)$$
 
 ANN 라이브러리는 hnswlib 를 사용했다고만 언급되어 있습니다.
 
+> 📌 실제 추론 때 무엇이 입력으로 들어가는지(아이템 1개 vs 아웃핏 전체), 구체적인 카테고리 열거 예시는 **Q1** 에서 자세히 다룹니다.
+
 ---
 
 ## 5️⃣ 구현 세부 (Implementation Details)
@@ -297,7 +300,7 @@ ANN 라이브러리는 hnswlib 를 사용했다고만 언급되어 있습니다.
 | SCE-Net average [15] | 4.41 / 9.85 / 13.87 | 5.10 / 11.20 / 15.93 |
 | **CSA-Net (제안)** | **5.93 / 12.31 / 17.85** | **8.27 / 15.67 / 20.91** |
 
-절대 수치가 낮아 보이지만 무작위 기준선 대비로는 큰 값입니다 (→ Q2 참조).
+절대 수치가 낮아 보이지만 무작위 기준선 대비로는 큰 값입니다 (→ Q6 참조).
 
 ---
 
@@ -394,7 +397,501 @@ CSA-Net (본 논문)     마스크 공유 + 카테고리 조건 — 성능 ↑, 
 
 ## 💬 Q&A
 
-### Q1. 인덱스 저장 비용이 정확히 몇 배로 늘어나나?
+### Q1. 실제 추론 때 입력은 뭔가? 옷 아이템 하나인가, 아웃핏(여러 벌)인가?
+
+*모델을 실제로 붙여 쓰려면 무엇을 넣어야 하는지가 가장 먼저 걸리는 부분입니다.*
+
+**둘 다 맞고, 층이 다릅니다.**
+
+- **네트워크(CSA-Net) 입력 = 옷 아이템 딱 1장**
+- **시스템 전체 입력 = 아웃핏(여러 벌) + 찾을 카테고리**
+
+CSA-Net 은 아웃핏을 통째로 먹지 못합니다. 아이템 하나씩 n번 돌리고, 결과를 **바깥에서 평균으로 합칩니다.**
+
+#### 네트워크 한 번의 입력 (3개)
+
+| 입력 | 예시 | 형태 |
+|---|---|---|
+| 소스 이미지 | 청바지 사진 1장 | 이미지 |
+| 소스 카테고리 | bottoms | one-hot 11차원 |
+| 타깃 카테고리 | shoes | one-hot 11차원 |
+
+출력은 64차원 임베딩 1개. **아웃핏이라는 개념이 여기엔 아예 없습니다.**
+
+#### 색인할 때 (오프라인, DB 쪽)
+
+DB 에 신발 사진 한 장이 들어왔다고 합시다. 이 신발이 나중에 **어떤 아이템과 짝지어 비교될지 지금은 모릅니다.** 그래서 가능한 상대 카테고리를 전부 열거해 임베딩을 미리 다 만들어 둡니다.
+
+```
+신발 이미지 → ψ(신발, bags,       shoes) → 임베딩 #1
+            → ψ(신발, tops,       shoes) → 임베딩 #2
+            → ψ(신발, bottoms,    shoes) → 임베딩 #3
+            → ψ(신발, sunglasses, shoes) → 임베딩 #4
+            ...  (카테고리 11개 전부)
+```
+
+신발 한 켤레가 임베딩 **11개**를 갖게 되고, 이게 저장 비용 11배의 정체입니다 (→ Q5).
+
+#### 검색할 때 (온라인, 질의 쪽)
+
+질의 아웃핏이 가방·선글라스·원피스·아우터 **4개**이고, 빠진 게 신발이라고 합시다.
+
+> ⚠️ **중요**: 빠진 카테고리(신발)는 **모델이 맞히는 게 아니라 사람/시스템이 알려줘야 합니다.** 이건 입력이지 출력이 아닙니다.
+
+| 단계 | 하는 일 |
+|---|---|
+| ① | 가방 → ψ(가방, bags, **shoes**) → 임베딩 |
+| ② | 선글라스 → ψ(선글라스, sunglasses, **shoes**) → 임베딩 |
+| ③ | 원피스 → ψ(원피스, all-body, **shoes**) → 임베딩 |
+| ④ | 아우터 → ψ(아우터, outerwear, **shoes**) → 임베딩 |
+
+즉 **CNN 을 4번 돌립니다.** 그다음 4번의 KNN 검색을 합니다.
+
+| 질의 | 검색 대상 인덱스 |
+|---|---|
+| 가방 임베딩 | 신발들의 **(bags, shoes)** 임베딩 모음 |
+| 선글라스 임베딩 | 신발들의 **(sunglasses, shoes)** 임베딩 모음 |
+| 원피스 임베딩 | 신발들의 **(all-body, shoes)** 임베딩 모음 |
+| 아우터 임베딩 | 신발들의 **(outerwear, shoes)** 임베딩 모음 |
+
+**질의 쪽과 후보 쪽이 반드시 같은 카테고리 쌍을 써야 합니다.** 그래야 같은 마스크(같은 공간)에서 거리를 재니까요 (→ 3.3절 대칭성). 다른 쌍끼리 비교하면 애초에 의미가 없습니다.
+
+마지막으로 랭킹 4개를 **average fusion** 으로 합쳐서 최종 순위를 냅니다.
+
+#### 정리
+
+```
+아웃핏 4개 + "신발 찾아줘"
+        │
+        ├─ CNN+CSA-Net 4번 (아이템별 독립, 서로 안 봄)
+        │
+        ├─ KNN 검색 4번 (서로 다른 4개 인덱스에서)
+        │
+        └─ 랭킹 4개 평균 → 최종 신발 목록
+```
+
+| 층위 | 입력 |
+|---|---|
+| 네트워크 ψ | **아이템 1개** + 카테고리 2개 |
+| 검색 시스템 | **아웃핏 n개** + 타깃 카테고리 1개 |
+| 계산량 | CNN n번, KNN n번 |
+
+#### ⭐ 여기서 드러나는 구조적 한계
+
+**아이템끼리는 서로를 절대 보지 못합니다.** 가방 임베딩을 만들 때 원피스가 뭔지 모릅니다.
+
+그래서 "아웃핏 전체를 고려한다"는 말이 실제로 작동하는 지점은 딱 두 군데뿐입니다.
+
+1. **학습 때** — 손실 함수에서 거리 n개를 평균 (식 5)
+2. **추론 때** — 랭킹 n개를 평균 (score fusion)
+
+둘 다 **바깥에서 평균 내는 것**이지, 네트워크 안에서 상호작용이 일어나는 게 아닙니다. 파란 원피스 + 검은 아우터라는 **조합**에서만 생기는 스타일 같은 건 원리상 포착 못 합니다.
+
+이후 OutfitTransformer 계열이 아웃핏을 하나의 시퀀스로 넣어 self-attention 으로 아이템끼리 서로 보게 만든 게, 정확히 이 한계를 겨냥한 후속 작업입니다 (→ 9장 계보).
+
+---
+
+### Q2. 그럼 이미지 한 장만 갖고 어울리는 바지·신발·아우터·가방을 다 찾을 수 있나?
+
+*실서비스에서 가장 흔한 시나리오("이 옷에 뭐 매치하지?")가 이것이라 별도로 확인해 둘 가치가 있습니다.*
+
+**됩니다.** 아웃핏 크기 n=1 은 식 5에서 평균 낼 항이 하나뿐인 경우라 수식상 아무 문제 없습니다. 애초에 네트워크가 아이템을 하나씩만 보니까요 (→ Q1).
+
+#### 되는 것 — CNN 은 딱 1번
+
+```
+셔츠 이미지 → CNN 1번 → 특징 x (재사용!)
+                          │
+    ├─ 마스크(tops→bottoms)   → 임베딩 → 바지 인덱스 검색   → 어울리는 바지 목록
+    ├─ 마스크(tops→shoes)     → 임베딩 → 신발 인덱스 검색   → 어울리는 신발 목록
+    ├─ 마스크(tops→outerwear) → 임베딩 → 아우터 인덱스 검색 → 어울리는 아우터 목록
+    └─ 마스크(tops→bags)      → 임베딩 → 가방 인덱스 검색   → 어울리는 가방 목록
+```
+
+**비용이 거의 안 듭니다.** CNN 은 **딱 1번**만 돌리고, 그 특징 x 를 재사용해서 마스크만 바꿔 끼우면 됩니다. 마스크 곱하기는 벡터 원소별 곱 한 번이라 사실상 공짜입니다. 카테고리 10개를 다 뒤져도 CNN 비용은 1회분입니다.
+
+> 단, 찾을 카테고리는 매번 지정해줘야 합니다. "이 셔츠에 뭐가 빠졌는지 알아서 찾아줘"는 안 되고, "바지 찾아줘" "신발 찾아줘"를 각각 시켜야 합니다.
+
+#### ⚠️ 조심할 것 — 4개가 서로 어울린다는 보장은 없다
+
+찾아온 바지·신발·아우터·가방은 **각자 셔츠하고만** 어울립니다. **자기들끼리는 한 번도 비교된 적이 없습니다.**
+
+| 결과 | 셔츠와의 관계 | 문제 |
+|---|---|---|
+| 정장 바지 | ✅ 흰 셔츠와 잘 어울림 | |
+| 러닝화 | ✅ 흰 셔츠와 잘 어울림 | |
+| **정장 바지 + 러닝화** | — | ❌ **서로는 안 어울림** |
+
+각 검색이 완전히 독립이라 이런 조합이 그냥 통과합니다.
+
+#### 해결 — 하나씩 붙여가며 굴리기 (greedy 방식)
+
+논문이 명시하진 않았지만, 구조상 이렇게 쓰는 게 맞습니다.
+
+| 라운드 | 질의 아웃핏 | CNN 호출 | 찾는 것 |
+|---|---|---|---|
+| 1 | 셔츠 (1개) | 1번 | 바지 → 하나 확정 |
+| 2 | 셔츠 + 바지 (2개) | +1번 | 신발 → 하나 확정 |
+| 3 | 셔츠 + 바지 + 신발 (3개) | +1번 | 아우터 → 하나 확정 |
+| 4 | 4개 | +1번 | 가방 |
+
+라운드가 갈수록 질의 아이템이 늘어나서 **평균 낼 랭킹이 많아지고**, 결과가 안정됩니다. 앞서 확정한 아이템들이 다음 검색의 제약으로 작동하니까 전체가 하나로 묶입니다.
+
+이전 라운드 아이템들의 CNN 특징은 캐시해두면 되므로, 라운드당 CNN 은 새 아이템 1개분만 추가됩니다.
+
+#### 성능은 어떨까 — 논문에 답이 없다
+
+FITB 도 검색 실험도 전부 아이템이 여러 개 있는 아웃핏으로만 평가했고, **아이템 1장짜리 질의는 한 번도 측정하지 않았습니다.**
+
+원리상으로는 이렇게 예상됩니다.
+
+| 질의 아이템 수 | 예상 |
+|---|---|
+| 1장 | 랭킹 평균 효과 없음 → **노이즈가 큼** |
+| 4~5장 | 랭킹 여러 개 평균 → **안정적** |
+
+논문 수치(recall@10 8.27%)는 여러 장 조건에서 나온 것이니, 1장 조건에서는 **더 낮을 것으로 봐야 합니다.** 검증되지 않은 영역이라 직접 재봐야 합니다.
+
+#### 한 줄
+
+**된다. CNN 1번으로 카테고리별 추천 목록을 전부 뽑을 수 있다. 다만 목록끼리는 서로 조율되지 않으므로, 완성된 한 벌을 만들려면 하나씩 붙여가며 재검색해야 한다.**
+
+---
+
+### Q3. 공개된 비공식 구현 두 개는 논문과 일치하게 작성됐나?
+
+*원저자 코드가 없으므로(Amazon 사내), 재현하려면 서드파티 구현에 의존하게 됩니다. 그 구현들을 믿을 수 있는지 먼저 확인해야 합니다.*
+
+**결론부터: 둘 다 논문 재현이 아니고, 둘 다 실행조차 되지 않습니다.**
+
+| 저장소 | 커밋 | 저자 선언 | 결과 보고 |
+|---|---|---|---|
+| [Jungjaewon/Fashion_Outfit_Complementary_Item_Retrieval](https://github.com/Jungjaewon/Fashion_Outfit_Complementary_Item_Retrieval) | `a447b66` | "the code is not tested yet", "testing: Not implemented yet" | "Empty for now" |
+| [bigohofone/csa-net](https://github.com/bigohofone/csa-net) (= owj0421/csa-net) | `07db8e4` | "🚧 This project is under construction 🚧", Train/Test 사용법 칸이 비어 있음 | 없음 |
+
+---
+
+#### A. Jungjaewon 저장소
+
+##### A-1. 실행 자체가 불가능 — 크래시 지점 4곳
+
+| # | 위치 | 문제 |
+|---|---|---|
+| ① | **solver.py 27번째 줄** | `config['TRAINING_CONFIG']['BASE_LR']` 를 읽는데 config.yml 에는 `LR` 만 있음 → **KeyError, 생성자에서 즉사** |
+| ② | **data_loader.py 44·67번째 줄** | one-hot 길이를 `num_conditions`(=5)로 만듦. 두 개 이어붙여 **10차원**인데 model.py 27번째 줄의 cate_net 입력은 `num_category*2` = **20차원** → shape mismatch. 게다가 카테고리 번호가 5 이상이면 IndexError |
+| ③ | **solver.py `dict2gpu`** | `data_dict[key].to(self.gpu)` — 반환값을 **버림**. `.to()` 는 텐서에서 in-place 가 아니므로 데이터는 CPU에 남고 모델은 GPU → device mismatch |
+| ④ | **data_loader.py 47번째 줄** | `torch.LongTensor(positive_cate)` — 정수를 넣으면 스칼라가 아니라 **길이 N짜리 미초기화 텐서**가 생성됨 |
+
+##### A-2. 조용히 틀리는 논리 오류 (더 심각)
+
+**ⓐ 브로드캐스팅으로 거리 행렬이 배치×배치가 됨**
+
+```python
+D_p = torch.zeros((batch, 1))          # (96, 1)
+D_p += torch.mean((f_o-f_p)**2, dim=1) # (96,)
+```
+
+실측: `(4,1) + (4,)` → 결과가 **(4,4)**. 스칼라 거리 벡터여야 할 D_p 가 배치 전체의 교차 행렬로 부풀어 오릅니다.
+
+**ⓑ 오답 집계가 논문의 min 도 average 도 아님**
+
+```python
+for m in range(self.num_negative):
+    D_n_m = 0
+    for n in range(self.num_outfit):
+        f_n = CSA(negative_image_{n}, ...)   # ← m이 아니라 n으로 인덱싱!
+    D_n += D_n_m
+D_n = D_n / self.batch_size                  # ← 배치 크기로 나눔?
+```
+
+세 가지가 동시에 틀렸습니다.
+
+1. 안쪽에서 오답 이미지를 **m 이 아니라 n 으로** 꺼냅니다. m 루프를 5번 돌아도 **매번 똑같은 값**이 나옵니다. 결국 D_n = 5 × (동일값)
+2. 논문 식 6의 φ 는 **min**(핵심 기여!)인데 코드는 **합**입니다. min 도 average 도 없습니다
+3. 마지막에 오답 개수(5)가 아니라 **배치 크기(96)로 나눕니다**. 근거 없는 스케일
+
+7장 (1)에서 짚었듯 이 논문 기여 #2의 실질은 min 집계인데, **그 min 이 코드에 아예 없습니다.**
+
+**ⓒ 학습 목표의 부호가 50% 확률로 뒤집힘**
+
+data_loader.py 39~42번째 줄:
+
+```python
+if random.random() > 0.5 and self.get_negative_changing(...):
+    loss_tensor = -1
+else:
+    loss_tensor = +1
+```
+
+`MarginRankingLoss(x1, x2, y)` 는 `max(0, -y·(x1-x2) + margin)` 입니다. 논문 식 7을 얻으려면 **y 는 항상 -1** 이어야 합니다. 여기서는 절반이 +1 이 되어, **그 절반은 정답을 오답보다 멀게 밀어내도록** 학습됩니다.
+
+덤으로 `get_negative_changing` 함수는 `positive[0] = positive_path` 처럼 **자기 자신을 자기에게 대입**할 뿐 아무것도 바꾸지 않습니다.
+
+**ⓓ 질의와 후보가 서로 다른 공간에서 비교됨**
+
+Q1 에서 설명한 "질의 쪽과 후보 쪽이 같은 카테고리 쌍을 써야 한다"는 원칙이 오답에서 깨집니다.
+
+| 임베딩 | 사용하는 카테고리 쌍 |
+|---|---|
+| f_o (코디 아이템) | (정답카테고리, **코디아이템카테고리**) |
+| f_p (정답) | (정답카테고리, **코디아이템카테고리**) ✅ 일치 |
+| f_n (오답) | (정답카테고리, **오답카테고리**) ❌ **불일치** |
+
+오답만 다른 마스크를 거칩니다. 서로 다른 subspace 에서 잰 거리를 margin 으로 비교하게 됩니다.
+
+**ⓔ 학습률이 즉시 붕괴**
+
+`ExponentialLR(gamma=0.95)` 의 `.step()` 을 **에폭이 아니라 매 이터레이션**마다 호출합니다. 100 이터레이션이면 0.95^100 ≈ 원래의 0.6%. 논문의 "선형 감소, warmup 0"과 완전히 다릅니다.
+
+##### A-3. 인덱싱·평가 — 논문 3.3절이 사실상 미구현
+
+| 논문 | 코드 |
+|---|---|
+| DB 아이템을 **타깃 카테고리 전부 열거**해 색인 | 열거 없음. 색인 대상도 DB 후보가 아니라 **코디 아이템**(f_o) |
+| 아이템별 KNN 후 **average fusion** | 융합 없음 |
+| **recall@top k** | 없음 |
+| FITB 정확도 / 호환성 AUC | 없음 |
+
+게다가 `p.add_items(data, data_labels)` 에서 `data_labels[:] = 1` — **모든 아이템 라벨이 1**입니다. 그 뒤 `labels == positive_cate` 로 정답을 판정하니, 평가 코드 자체가 무의미합니다.
+
+##### A-4. 논문과 맞는 부분
+
+ResNet18 / embedding 64 / subspace 5 / batch 96 / margin 0.3 / ADAM ✅, 식 1 구현 ✅, hnswlib 사용 ✅(사용법은 틀렸지만).
+
+**모델 구조(model.py)만 논문에 부합하고 나머지는 전부 어긋납니다** (→ Q4 에서 그 model.py 를 따로 검증). 학습률 1e-4(config 의 `10e-5`)도 논문 5e-5 의 2배, 카테고리 수도 10(논문 11)입니다.
+
+---
+
+#### B. bigohofone / owj0421 저장소
+
+코드 품질은 확실히 낫습니다. 하지만 **논문의 두 기여 중 하나가 통째로 비어 있습니다.**
+
+##### B-1. 결정적 문제 — Outfit Ranking Loss 가 `pass`
+
+`src/models/loss.py`:
+
+```python
+class OutfitRankingLoss(nn.Module):
+    pass          # ← 논문 기여 #2, 본문이 없음
+```
+
+실제로 쓰이는 건 같은 파일의 `InBatchTripletMarginLoss` 와, train.py 안에 따로 정의된 `InBatchOutfitRankingLoss` 입니다. 후자를 뜯어보면 논문 식 5~7 과 **연산 순서가 다릅니다.**
+
+| | 논문 | 코드 |
+|---|---|---|
+| 순서 | ① 코디 전체 평균 → ② 오답들에 min → ③ hinge 1번 | ① **아이템별** min → ② **아이템별** hinge → ③ 마지막에 평균 |
+| 결과 | 아웃핏 단위 랭킹 | 사실상 **아이템 단위 triplet 의 평균** |
+
+논문이 "단일 아이템이 아니라 아웃핏 전체로 계산한다"고 강조한 바로 그 지점(식 5의 평균이 hinge **안쪽**에 있어야 함)이 뒤집혔습니다.
+
+##### B-2. 오답을 in-batch 로 뽑아 카테고리 제약이 사라짐
+
+논문은 **정답과 같은 카테고리**에서 오답을 뽑고 semi-hard 를 선택합니다. 코드는 배치 안 다른 샘플의 정답을 오답으로 씁니다.
+
+- 가방이 정답인데 오답으로 신발·모자가 들어옴 → **카테고리만 봐도 구분 가능한 쉬운 오답**
+- semi-hard 가 아니라 **hardest**(argmin)
+
+FITB 의 오답이 같은 카테고리에서 뽑힌다는 점을 생각하면, 학습 분포와 평가 분포가 어긋납니다.
+
+##### B-3. 패딩이 손실에 그대로 들어감
+
+`preprocess` 가 짧은 아웃핏을 **검은 이미지 + 'unknown' 카테고리**로 채우고 `mask` 를 만들어 손실 함수에 넘깁니다. 그런데 `InBatchOutfitRankingLoss.forward` 는 **인자로 mask 를 받기만 하고 본문에서 한 번도 쓰지 않습니다.** 검은 이미지와의 거리가 손실에 그대로 누적됩니다.
+
+##### B-4. import 부터 실패
+
+| 문제 | 내용 |
+|---|---|
+| `from ..data.datasets import polyvore` | **`src/data/datasets/` 디렉토리 자체가 없음** |
+| `from ..utils.utils import seed_everything` | **`src/utils/utils.py` 없음** (있는 건 distributed_utils, logger_utils) |
+| `__init__.py` | 저장소 전체에 **0개** → 상대 import 불가 |
+
+##### B-5. 학습 루프의 나머지 버그
+
+| # | 문제 |
+|---|---|
+| ① | `save_checkpoint` 와 `save_results` 가 **같은 경로**(`epoch_N_score.json`)에 씀. JSON 이 체크포인트를 덮어씀 |
+| ② | `save_checkpoint(args, ...)` 에 cfg 대신 argparse 객체를 넘김 → 나중에 `CSANetConfig(**{...'polyvore_dir'...})` → TypeError |
+| ③ | `load_checkpoint` 가 `enc.load_state_dict(...)` 의 반환값(`_IncompatibleKeys`)을 모델로 되돌려줌 → 2에폭째 크래시 |
+| ④ | `valid_logs = None` 인데 `{**train_log, **valid_log}` → 1에폭 끝에서 TypeError |
+| ⑤ | `is_distributed = torch.distributed.is_initialized()` 를 **setup() 호출 전에** 확인 → 항상 False → setup 안 됨 → 뒤의 `dist.barrier()` 크래시 |
+| ⑥ | valid_step 전체가 **주석 처리** → 학습 중 FITB 검증 없음 |
+| ⑦ | `torch.autograd.set_detect_anomaly(True)` 가 전역에 켜진 채 |
+
+##### B-6. test.py / 2_test_compatibility.py 는 다른 프로젝트 코드
+
+두 스크립트 모두 `load_model(model_type=..., checkpoint=...)` 이 **모델 하나**를 반환한다고 가정하고 `model(query, use_precomputed_embedding=True)` 를 호출합니다. 이 저장소의 `load_model` 은 `(cfg, enc, sp_attn)` **3-튜플**을 반환하고, `CSANetEncoder.forward` 에는 그런 인자가 없습니다.
+
+`--model_type choices=['original','clip']`, `wandb.init(project='outfit-transformer-cir')` 같은 흔적으로 볼 때 저자 본인의 **OutfitTransformer 저장소에서 복사해 온 뒤 손대지 않은 파일**입니다. 실행 불가한 죽은 코드입니다.
+
+##### B-7. 잘한 점
+
+| 항목 | 평가 |
+|---|---|
+| 카테고리 11개 | ✅ 논문과 일치 (`all-body, bottoms, tops, outerwear, bags, shoes, accessories, scarves, hats, sunglasses, jewellery`) |
+| 인코더/어텐션 분리 | ✅ subspace 임베딩을 **이미지당 한 번만** 계산해 재사용 — 논문 4.2절의 online mining 취지와 일치 |
+| ⭐ `comb_of_cat` | 카테고리 쌍을 **전부 열거해 룩업 딕셔너리**로 만들어 씀. 2.2절의 "이 attention 은 사실 카테고리 쌍 룩업 테이블"이라는 분석이 **코드로 그대로 확인**됨 |
+| 식 1 | ✅ `x * m` 후 w 로 가중합 — 정확 |
+
+한 가지 흥미로운 부작용: 카테고리 임베딩 두 개를 정규화한 뒤 **더하기**(`embs + target_embs`) 때문에 (A,B)와 (B,A)가 **구조적으로 동일**합니다. 논문은 concat 을 쓰고 순서 무관은 실험으로 확인했는데(4.4절), 여기서는 아예 대칭이 강제됩니다.
+
+---
+
+#### C. 논문 대비 항목별 대조
+
+| 항목 | 논문 | Jungjaewon | bigohofone |
+|---|---|---|---|
+| Backbone | ResNet18 | ✅ | ✅ |
+| Embedding 차원 | 64 | ✅ 64 | ❌ 128 |
+| Subspace 개수 | 5 | ✅ 5 | ✅ 5 |
+| 식 1 (가중합) | — | ✅ | ✅ |
+| attention 입력 | one-hot 2개 concat | ❌ 차원 불일치 | ❌ 학습 임베딩 덧셈 |
+| 서브넷 구조 | fc-relu-fc-softmax | ✅ | ✅ |
+| 카테고리 수 | 11 | ❌ 10 | ✅ 11 |
+| 식 5 (코디 평균 거리) | 평균 | ❌ 합 + shape 버그 | △ 평균 위치가 다름 |
+| **식 6 (min 집계)** | **min** | ❌ **없음(합)** | △ 아이템별 min |
+| 식 7 margin | 0.3 | ✅ 0.3 | ❌ 2.0 |
+| Negative | 같은 카테고리 + semi-hard | ❌ 부호 랜덤 반전 | ❌ in-batch, hardest |
+| Batch | 96 | ✅ 96 | ❌ 20 |
+| Learning rate | 5e-5 | ❌ 1e-4 | ❌ 2e-5 |
+| LR 스케줄 | 선형감소, warmup 0 | ❌ 지수감쇠(매 스텝) | ❌ OneCycle, warmup 30% |
+| Optimizer | ADAM | ✅ | ❌ AdamW |
+| 색인(카테고리 열거) | 필수 | ❌ 대상 자체가 틀림 | ❌ 없음 |
+| recall@top k | 주 지표 | ❌ | ❌ |
+| FITB 정확도 | 63.73 | ❌ | ❌ 주석 처리 |
+| 호환성 AUC | 0.91 | ❌ | △ 함수만 존재, 경로 단절 |
+| **실행 가능 여부** | — | ❌ | ❌ |
+
+---
+
+#### D. 종합 판정과 직접 구현 시 체크리스트
+
+| | Jungjaewon | bigohofone |
+|---|---|---|
+| 성격 | **미완성 초안** — 논리 오류가 광범위 | **다른 프로젝트의 뼈대 이식** — 핵심 손실이 빈 껍데기 |
+| 살릴 부분 | `model.py` (구조는 정확) | `csa_net.py` + 카테고리 쌍 열거 방식 |
+| 버릴 부분 | solver.py 학습 루프 전체, 인덱싱/평가 전체 | loss.py, test.py 2종, 학습 루프의 체크포인트 처리 |
+| 기여 #1 (CSA-Net) | ⭕ 구조는 재현됨 | ⭕ 구조는 재현됨 |
+| 기여 #2 (Outfit Ranking Loss) | ❌ min 없음, 부호 뒤집힘 | ❌ 클래스가 `pass`, 대체 구현도 순서 다름 |
+| 기여 #3 (검색 파이프라인) | ❌ | ❌ |
+
+구조(기여 #1)는 두 저장소 어느 쪽을 봐도 30줄이면 끝나니 그대로 참고해도 됩니다. **실제로 만들어야 하는 건 나머지 둘입니다.**
+
+1. **손실 함수** — 순서를 반드시 지킬 것: 코디 평균(식 5) → 오답들에 min(식 6) → hinge 한 번(식 7). 7장 (1)에서 짚었듯 **min 을 빼면 성능이 triplet 이하로 떨어집니다.** 이 논문에서 min 은 옵션이 아니라 성능의 전부입니다
+2. **오답 샘플링** — 정답과 같은 카테고리에서 뽑고 semi-hard 선택. in-batch 로 대충 하면 안 됩니다
+3. **색인** — DB 아이템마다 타깃 카테고리를 열거해 임베딩을 여러 벌 만들고, 질의와 **같은 카테고리 쌍 인덱스**에서만 검색. 그다음 아이템별 랭킹을 average fusion (→ Q1)
+
+논문에 원저자 코드가 없으니, 이 세 가지는 어느 저장소에서도 가져올 게 없습니다.
+
+---
+
+### Q4. Jungjaewon 구현의 `model.py` forward 는 정확한가?
+
+*Q3 에서 "모델 구조만 맞다"고 판정했으므로, 그 한 부분이 정말 식 1과 같은지 따로 검증합니다.*
+
+문제의 코드:
+
+```python
+def forward(self, image, concat_categories):
+    feature_x = self.backbone(image)                          # (B, 64)
+    feature_x = feature_x.unsqueeze(dim=1)                    # (B, 1, 64)
+    b, _, _ = feature_x.size()
+    feature_x = feature_x.expand((b, self.num_conditions, self.embedding_size))
+
+    index = Variable(torch.LongTensor(range(self.num_conditions)))
+    if image.is_cuda:
+        index = index.cuda()
+    index = index.unsqueeze(dim=0).expand((b, self.num_conditions))
+
+    embed = self.masks(index)                                 # (B, 5, 64)
+    embed_feature = embed * feature_x
+
+    attention_weight = self.cate_net(concat_categories)       # (B, 5)
+    attention_weight = attention_weight.unsqueeze(dim=2)
+    attention_weight = attention_weight.expand((b, self.num_conditions, self.embedding_size))
+
+    weighted_feature = embed_feature * attention_weight
+    final_feature = torch.sum(weighted_feature, dim=1)        # (B, 64)
+    return final_feature
+```
+
+#### 수치 검증
+
+코드가 하는 계산과, 2.2절에서 유도한 닫힌 형태 `f = x ⊙ (Σ wᵢmᵢ)` 를 같은 입력으로 비교했습니다.
+
+| 항목 | 결과 |
+|---|---|
+| 최대 절대 오차 | **4.8e-07** (float32 반올림 수준) |
+| 출력 shape | (B, 64) ✅ |
+| softmax 합 | 1.0 ✅ |
+
+**완전히 동일합니다.**
+
+#### ✅ 맞는 부분
+
+| 논문 | 코드 | |
+|---|---|---|
+| x = CNN(I) | `feature_x = self.backbone(image)` | ✅ |
+| x ⊙ mᵢ (Hadamard product) | `embed * feature_x` | ✅ |
+| wᵢ = softmax(MLP(카테고리 concat)) | `self.cate_net(concat_categories)` | ✅ |
+| Σᵢ (x ⊙ mᵢ) · wᵢ | `torch.sum(weighted_feature, dim=1)` | ✅ |
+
+세부도 다 맞습니다.
+
+- **softmax `dim=1`** — (B, 5)에서 subspace 축으로 정규화. 배치 축으로 잘못 걸면 망하는데 제대로 됐습니다
+- **마스크 차원 = 임베딩 차원(64)** — `backbone.fc` 를 `Linear(512, 64)` 로 갈아끼워 x 를 64차원으로 만든 뒤 마스크를 곱합니다. 논문의 "마스크는 이미지 특징 벡터와 같은 차원"과 임베딩 64를 동시에 만족시키는 유일한 배치입니다. 512차원 풀링 출력에 마스크를 걸었다면 최종 임베딩이 512가 되어 논문과 어긋났을 텐데, 정확히 피했습니다
+- **카테고리를 concat 해서 넣는 것** — `Linear(20 → 5)` 에 concat 을 넣으면 결과가 `W_소스·e_소스 + W_타깃·e_타깃` 가 되어 **슬롯마다 다른 가중치 행렬**을 씁니다. 즉 (A,B)와 (B,A)를 구분할 수 있습니다. 논문이 4.4절에서 순서 뒤집기 실험을 할 수 있었던 것도 구조가 비대칭이기 때문입니다. 반면 bigohofone 은 카테고리 임베딩을 **더해서** 넣으므로 순서 구분이 원천 불가 — 이 지점만큼은 Jungjaewon 쪽이 논문에 더 충실합니다
+
+#### ⚠️ 문제 셋
+
+**1. `.cuda()` 가 GPU 0 으로 고정 — 이 저장소 설정에서 실제로 터짐**
+
+```python
+if image.is_cuda:
+    index = index.cuda()      # ← 디바이스 인자 없음 = cuda:0
+```
+
+그런데 config.yml 은 `GPU: 3` 이고 solver 는 `self.CSA.to(3)` 합니다.
+
+| 텐서 | 위치 |
+|---|---|
+| `self.masks.weight` | cuda:**3** |
+| `index` | cuda:**0** |
+
+`self.masks(index)` 에서 device mismatch 로 RuntimeError. GPU 가 1장인 환경에서만 우연히 통과합니다.
+**고치려면**: `index = index.to(image.device)` (`is_cuda` 분기 자체가 불필요)
+
+**2. 매 forward 마다 index 텐서를 새로 만들어 GPU 로 복사**
+
+`nn.Embedding` 으로 마스크를 꺼내는 건 CSN 원본에서 온 관행인데, 여기서는 **항상 0~4 전부**를 꺼냅니다. 즉 조회할 게 없습니다. `embed = self.masks.weight.unsqueeze(0)` 한 줄과 같습니다. `Variable` 도 PyTorch 0.4 이후 폐기된 API 입니다.
+
+**3. `expand` 3개가 전부 불필요**
+
+`(B,1,64) * (1,5,64)` 는 브로드캐스팅으로 알아서 `(B,5,64)` 가 됩니다. 정리하면 forward 전체가 두 줄입니다.
+
+```python
+w = self.cate_net(concat_categories)          # (B, K)
+return feature_x * (w @ self.masks.weight)    # (B, D)
+```
+
+#### 논문 미명시 사항
+
+| 항목 | 코드 값 | 논문 |
+|---|---|---|
+| cate_net 은닉 폭 | **5** (= 출력과 동일) | 명시 없음 ("two fully connected layers") |
+| 마스크 초기화 | 블록 대각 0.1/1.0 또는 `normal_(0.9, 0.7)` | 명시 없음 |
+| 최종 임베딩 L2 정규화 | 없음 | 명시 없음 |
+
+은닉 폭 5는 위반은 아니지만 상당히 빡빡합니다. `Linear(20→5) → ReLU → Linear(5→5)` 구조라 어텐션 테이블이 5차원 병목을 통과해야 합니다.
+
+#### 결론
+
+**`forward` 자체는 논문 구현으로 인정할 수 있습니다.** 수식이 정확하고, 마스크를 512차원이 아닌 64차원 임베딩에 거는 판단도 맞습니다.
+
+문제는 **이 함수가 호출되기 전에 죽는다**는 것입니다. `concat_categories` 가 data_loader 에서 10차원으로 만들어져 들어오는데 `cate_net` 첫 층은 20차원을 기대합니다 (→ Q3 의 A-1 ②). 즉 이 잘 짜인 forward 는 **한 번도 실행된 적이 없습니다.** README 의 "the code is not tested yet" 이 그대로 드러나는 대목입니다.
+
+---
+
+### Q5. 인덱스 저장 비용이 정확히 몇 배로 늘어나나?
 
 *카테고리 쌍마다 유효 마스크가 다르므로, 아이템 하나가 임베딩 하나로 끝나지 않습니다.*
 
@@ -408,7 +905,7 @@ Polyvore Outfits 의 상위 카테고리(semantic category)는 **11개**입니�
 
 논문 표현 그대로 "embedding size is linear in the number of high-level categories"입니다. 카테고리가 세분화될수록 이 비용이 커지므로, **fine-grained 153개** 수준으로 조건을 세밀하게 바꾸려 하면 곧바로 벽에 부딪힙니다. 이 논문이 굳이 상위 11개 카테고리만 조건으로 쓴 이유가 여기 있다고 보는 게 자연스럽습니다.
 
-### Q2. recall@10 이 8.27% 면 좋은 건가 나쁜 건가?
+### Q6. recall@10 이 8.27% 면 좋은 건가 나쁜 건가?
 
 *절대 수치가 낮아 보여 판단이 어려우므로 기준선과 비교합니다.*
 
@@ -421,7 +918,7 @@ Polyvore Outfits 의 상위 카테고리(semantic category)는 **11개**입니�
 
 즉 절대 수치는 낮지만 무의미한 수준이 아닙니다. 다만 이 지표가 낮게 나오는 큰 이유는 **정답이 1장뿐**이기 때문이며(7장 (4) 참조), 실제 사용자 만족도와는 다른 이야기입니다. 논문 스스로 "카탈로그에 어울리는 아이템이 여럿 있을 수 있으므로 이 지표가 시스템의 실용 성능을 반영하지 못할 수 있다"고 명시했습니다.
 
-### Q3. 왜 subspace 를 하필 5개만 쓰나?
+### Q7. 왜 subspace 를 하필 5개만 쓰나?
 
 *표현력을 늘리려면 많을수록 좋을 것 같은데 5개인 이유가 궁금해집니다.*
 
@@ -429,7 +926,7 @@ Polyvore Outfits 의 상위 카테고리(semantic category)는 **11개**입니�
 
 다만 2.2절의 관점에서 보면 5라는 숫자의 의미가 분명해집니다. **66개 유효 마스크를 5차원 기저로 표현**한다는 뜻이므로, 5는 "표현력 예산"이 아니라 **압축률 파라미터**입니다. 5를 66까지 키우면 Type-aware [16]와 동일해지고 정규화 효과가 사라집니다. 즉 **작게 유지하는 것이 이 방법의 핵심**입니다. 논문이 이 관점을 명시하지 않은 것은 아쉬운 부분입니다.
 
-### Q4. 실서비스에 그대로 쓸 수 있나?
+### Q8. 실서비스에 그대로 쓸 수 있나?
 
 *이 논문의 목적이 실서비스이므로 직접 답해 둘 가치가 있습니다.*
 
@@ -438,8 +935,8 @@ Polyvore Outfits 의 상위 카테고리(semantic category)는 **11개**입니�
 | 인덱싱 가능성 | ✅ 설계 목적 그대로 달성 |
 | 신상품(cold-start) 대응 | ✅ 이미지 + 카테고리만 있으면 임베딩이 나옴 (GCN 대비 결정적 우위) |
 | 카탈로그 규모 | ⚠️ 미검증 — 3000장 실험이 전부, 지연시간 측정 0건 |
-| 저장 비용 | ⚠️ 카테고리 수 배수 (Q1) |
-| 재현 | ❌ 코드·데이터 분할 미공개 → **직접 구현 필요** |
+| 저장 비용 | ⚠️ 카테고리 수 배수 (Q5) |
+| 재현 | ❌ 코드·데이터 분할 미공개. 비공식 구현 2종도 실행 불가 → **직접 구현 필요** (→ Q3 의 D) |
 | 카테고리 체계 의존 | ⚠️ 조건이 **카테고리 one-hot** 이므로, 카테고리 체계를 바꾸면 attention 테이블을 재학습해야 함 |
 
 구조 자체는 단순해서(ResNet18 + 마스크 5개 + 2층 MLP) 재구현 난이도는 낮습니다. 다만 논문의 검색 수치를 그대로 재현하려는 목표는 포기하는 편이 낫습니다.
