@@ -146,8 +146,6 @@
 
 ## 📂 Recommendation
 
-> 추천/검색(retrieval) 계열.
-
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
 | 1 | [Fashion Outfit Complementary Item Retrieval](Recommendation/PAPER_CSA-Net.md) | CVPR 2020 | [paper](https://openaccess.thecvf.com/content_CVPR_2020/papers/Lin_Fashion_Outfit_Complementary_Item_Retrieval_CVPR_2020_paper.pdf) | - | 2026-09-02 |
