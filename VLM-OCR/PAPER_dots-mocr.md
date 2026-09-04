@@ -104,8 +104,8 @@
 
 | 부품 | 상세 | 파라미터 |
 |---|---|---|
-| Vision encoder | 42층, hidden 1536, SwiGLU(fc1/fc2/fc3), patch 14, spatial merge 2, bias 없음 | **1,262.1M** |
-| LLM 본체 | Qwen2.5-1.5B, 28층 hidden 1536, GQA(head 12/kv 2), intermediate 8960 | 1,310.3M |
+| Vision encoder | 42층, hidden 1536, SwiGLU(fc1/fc2/fc3), patch 14, spatial merge 2, bias 없음. **출처 없음 = from scratch**(전작 dots.ocr 자산), 클래스 `DotsVisionTransformer`, 접두사 `vision_tower.` | **1,262.1M** |
+| LLM 본체 | **`Qwen/Qwen2.5-1.5B` (base 판)**, 28층 hidden 1536, GQA(head 12/kv 2), intermediate 8960. 클래스가 `DotsOCRForCausalLM(Qwen2ForCausalLM)` 로 **Qwen2를 상속** | 1,310.3M |
 | embed_tokens | vocab 151,936 × 1536 | 233.4M |
 | lm_head | `tie_word_embeddings: false` 라 별도 존재 | 233.4M |
 | **합계** | | **3.0392B** |
@@ -587,7 +587,7 @@ Gemini 3 Pro 대비 차이를 벤치별로 다시 계산하면(→ §6.4 표):
 |---|---|---|
 | **소속** | Xiaohongshu hi lab + 화중과기대 | Shanghai AI Lab + PKU + SJTU + SenseTime |
 | **arXiv** | 2603.13032 | 2604.04771 |
-| **파라미터 (실측)** | **3.0392B** = 비전 1.26B + Qwen2.5-**1.5B**(임베딩 포함 1.78B) | **1.2B** = NaViT 675M + Qwen2-**0.5B** |
+| **파라미터 (실측)** | **3,039.2M** = 비전 1,262.1M + LLM측 1,777.1M | **1,156.0M** = 비전 662.0M + LLM측 494.0M (→ 아래 **파라미터·연산 부하 상세**) |
 | **추론 방식** | **1-pass end-to-end** — 페이지당 호출 1회, 레이아웃+내용을 한 JSON으로 | **decoupled 2-stage** — ① 1036px 축소판으로 레이아웃만 ② 원본에서 블록 crop해 재인식. 페이지당 **1+N회** |
 | **해상도 전략** | native, 최대 **11.29M 화소**를 통째로 | 축소판(저비용) + 원본 crop(고정밀) 분업 |
 | **전작 대비 구조 변경** | **0** — config.json이 dots.ocr과 바이트 동일 | **0** — 저자가 "한 글자도 안 바꿨다"고 명시 |
@@ -619,6 +619,56 @@ Gemini 3 Pro 대비 차이를 벤치별로 다시 계산하면(→ §6.4 표):
 3. **같은 일을 했는데 정직도가 갈린다.** 둘 다 "구조 동결 + 데이터만 교체"인데, MinerU2.5-Pro는 그걸 선언하고 단계별 ablation과 평가셋까지 공개했고, dots.mocr은 새 패러다임으로 포장한 채 **학습 수치 0·ablation 0·자체 벤치 비공개**로 간다. 대신 dots.mocr은 **MIT 라이선스와 태스크 범위(웹·장면·VQA)** 에서 앞선다.
 
 **선택 기준**: 수식·표 밀집 문서의 종합 품질 → MinerU2.5-Pro. 다국어 열화 스캔 + 상업 배포 자유도 + 웹/장면까지 한 모델로 → dots.mocr.
+
+#### 파라미터·연산 부하 상세 비교 (config.json + safetensors 헤더 실측)
+
+*위 표의 "파라미터" 한 줄을 펼친 것. dots.mocr 단독 분해는 §5.1, 여기는 **MinerU 대비 관점**.*
+
+| 구분 | 항목 | **dots.mocr** | **MinerU2.5 / Pro** |
+|---|---|---|---|
+| **총계** | 파라미터 (safetensors 실측) | **3,039.2M** | **1,156.0M** |
+| | bf16 가중치 용량 | **6.078 GB** | **2.312 GB** (2.63× 작음) |
+| | 논문 표기 | "3B" ✅ 일치 | "1.2B" ✅ 일치 |
+| | `architectures` (config.json) | `DotsOCRForCausalLM` (`model_type: dots_ocr`) — **자체 클래스** | `Qwen2VLForConditionalGeneration` (`model_type: qwen2_vl`) — **Qwen2-VL 클래스 그대로** |
+| **가져온 출처** | **비전 인코더 원본** | **없음 — 처음부터 학습(from scratch)**. 전작 dots.ocr가 만든 자산. 코드 클래스 `DotsVisionTransformer`, 가중치 접두사 `vision_tower.` | **`Qwen/Qwen2-VL-2B-Instruct`의 vision tower**에서 초기화. 클래스 `Qwen2VisionTransformerPretrainedModel`, 가중치 접두사 `visual.` |
+| | **언어 모델 원본** | **`Qwen/Qwen2.5-1.5B`** — **base**(대화 튜닝 안 된 원본). 논문이 "chat-specialized가 아닌 base를 쓴 이유"를 §3.2에서 명시. 코드상 `DotsOCRForCausalLM(Qwen2ForCausalLM)` 로 **Qwen2 클래스를 상속** | **`Qwen/Qwen2-0.5B-Instruct`** — Instruct 판. Qwen2-VL-2B가 원래 달고 있던 Qwen2-1.5B 대신 **더 작은 LM으로 갈아 끼움** |
+| | 조합 방식 | 자체 인코더 + 남의 LLM | **Qwen2-VL-2B를 분해해 눈만 가져오고 입은 축소 교체** |
+| **비전 인코더** | Transformer 블록 | **1,213.99M** | 631.2M |
+| | patch_embed | 0.91M (Conv2d) | 1.5M (Conv3d) |
+| | merger(연결부) | 47.20M | 30.8M |
+| | **비전 소계** | **1,262.1M (41.5%)** | **662.0M (57.3%)** ※ |
+| | 층 수 | **42층** | 32층 |
+| | hidden dim | **1536** | 1280 |
+| | MLP | **SwiGLU**(fc1/fc2/fc3), intermediate 4224 | **2층 MLP**(fc1/fc2), quick_gelu, intermediate 5120 |
+| | bias | **없음** | 있음 |
+| | attention heads | 12 | 16 |
+| | patch / merge | 14 / 2×2 | 14 / 2×2 (동일) |
+| | temporal_patch | **1** (비디오 유산 제거) | **2** (Qwen2-VL 유산, 정지영상도 2프레임 복제) |
+| **언어 모델** | Transformer 블록 | **1,310.34M** | 357.9M |
+| | embed_tokens | 233.37M | 136.1M |
+| | lm_head | **233.37M (별도 존재)** | **0M — `tie_word_embeddings: true`로 embed 재사용** |
+| | **LLM 소계** | **1,777.1M (58.5%)** | **494.0M (42.7%)** |
+| | 베이스 | Qwen2.5-**1.5B** base | Qwen2-**0.5B** Instruct |
+| | 층 수 / hidden | 28층 / 1536 | 24층 / 896 |
+| | intermediate | 8960 | 4864 |
+| | attention heads (Q/KV) | 12 / 2 (GQA) | 14 / 2 (GQA) |
+| | head_dim | 128 | 64 |
+| | vocab | 151,936 (동일) | 151,936 (동일) |
+| | max_position | 131,072 | 32,768 (Pro) / 16,384 (2.5) |
+| | 위치 인코딩 | **1D RoPE** | **M-RoPE** `mrope_section [8,12,12]` |
+| **추론 부하** | 비전 토큰 상한 | **14,400개** (11.29M 화소 ÷ 28×28) | **1,369개** (Stage I 1036² 고정) |
+| | KV cache / 토큰 | **28 KB** (28층 × kv 256dim) | **12 KB** (24층 × kv 128dim) |
+| | 페이지 1장 KV (상한 기준) | **약 403 MB** | **약 16 MB**(Stage I) — **약 24×** 차이 |
+| | 200dpi A4 실사용 시 | 4,933토큰 ≈ 138 MB | 1,369토큰 ≈ 16 MB |
+
+※ MinerU 논문(및 [[paper_mineru25]] 정리)은 비전 인코더를 **675M**으로 적었는데 safetensors 실측은 **662.0M**이다(13M 차이). 반올림이거나 표기 오차로 보인다. 총계 1.156B는 "1.2B" 표기와 맞는다.
+
+**이 표에서 읽히는 것 4가지**
+
+1. **두 모델의 무게중심이 정반대다.** dots.mocr은 비전 41.5% / **LLM 58.5%** — "긴 구조화 시퀀스를 뱉어야 하니 LM이 커야 한다"(논문 §3.2가 명시적으로 이 논리를 편다). MinerU는 **비전 57.3%** / LLM 42.7% — "문서 파싱은 대규모 언어모델에 대한 의존도가 낮다"(MinerU 논문의 솔직한 서술). **같은 과제를 두고 어느 쪽에 파라미터를 쓸지 정반대 결론**을 냈다.
+2. **dots.mocr은 lm_head에 233M을 따로 쓴다.** `tie_word_embeddings: false`라 임베딩과 출력층이 분리돼 있다. MinerU는 묶어서(`true`) 0M이다. **이 한 줄이 233M — MinerU LLM 본체(357.9M)의 65%에 해당하는 크기**인데, 어휘가 15만이라 비용이 큰 선택이다. 논문에 근거 설명은 없다.
+3. **비전 인코더 설계 세대가 다르다.** dots.mocr 쪽이 최신 관습이다 — SwiGLU, bias 제거, temporal_patch=1(정지영상용 Conv2d). MinerU는 Qwen2-VL 원형을 그대로 물려받아 quick_gelu 2층 MLP + bias + **temporal_patch=2**(정지 이미지도 2프레임으로 복제하는 비디오 유산)를 유지한다.
+4. **진짜 비용 차이는 파라미터가 아니라 토큰 수다.** 파라미터는 2.6배 차이인데 **페이지 1장의 KV cache는 최대 24배** 벌어진다(403MB vs 16MB). MinerU가 1036×1036 축소판을 고집하는 이유가 여기 있다. 다만 MinerU는 Stage II에서 블록 crop을 N번 더 돌리므로 총량은 문서 밀도에 따라 달라지고, **dots.mocr 논문에는 속도·메모리 실측이 하나도 없어서** 최종 우열은 직접 재봐야 한다.
 
 ### Q10. dots.mocr는 문서 내 블록을 감지하나?
 
