@@ -5,6 +5,7 @@
 <h1 align="center">📚 Reading-Papers</h1>
 
 <p align="center">
+  <a href="#-deep-learning"><img src="https://img.shields.io/badge/Deep--Learning-9cf.svg" alt="Deep Learning"/></a>
   <a href="#-diffusion"><img src="https://img.shields.io/badge/Diffusion-blueviolet.svg" alt="Diffusion"/></a>
   <a href="#-vlm"><img src="https://img.shields.io/badge/VLM-brightgreen.svg" alt="VLM"/></a>
   <a href="#-vlm-ocr"><img src="https://img.shields.io/badge/VLM--OCR-yellowgreen.svg" alt="VLM-OCR"/></a>
@@ -18,6 +19,12 @@
 </p>
 
 ---
+
+## 📂 Deep Learning
+
+| No | Title | Venue | Paper | Code | Updated |
+|---|---|---|---|---|---|
+| 1 | [OpenAI Astra and Looped Transformers](Deep-Learning/PAPER_Astra-Looped-Transformers.md) | Raschka Blog 2026 | [blog](https://sebastianraschka.com/blog/2026/openai-astra-looped-transformers.html) | - | 2026-09-04 |
 
 ## 📂 Diffusion
 
@@ -97,6 +104,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 13 | [Qwen-Drive-1.0: An Initial Step towards a Vision-Language Foundation Model for Autonomous Driving](VLM/PAPER_Qwen-Drive-1.0.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2609.00111) | [github](https://github.com/QwenLM/Qwen-Drive-1.0) | 2026-09-04 |
 | 12 | [Penguin-VL: Exploring the Efficiency Limits of VLM with LLM-based Vision Encoders](VLM/PAPER_Penguin-VL.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2603.06569) | [github](https://github.com/tencent-ailab/Penguin-VL) | 2026-08-24 |
 | 11 | [Qwen3-VL Technical Report](VLM/PAPER_Qwen3-VL.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2511.21631) | [github](https://github.com/QwenLM/Qwen3-VL) | 2026-08-04 |
 | 10 | [LFM2 Technical Report](VLM/PAPER_LFM2.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2511.23404) | - | 2026-07-29 |
@@ -132,6 +140,8 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 9 | [R³: 3D Reconstruction via Relative Regression](3D/PAPER_R3.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.26519) | [github](https://github.com/KevinXu02/R3) | 2026-09-04 |
+| 8 | [Revisiting Local Context for Long-Horizon Streaming 3D Reconstruction](3D/PAPER_ABot-Recon.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2608.27529) | [github](https://github.com/amap-cvlab/ABot-Recon) | 2026-09-04 |
 | 7 | [4DAnyone: Create Anyone in 4D from a Casual Monocular Video](3D/PAPER_4DAnyone.md) | SIGGRAPH Asia 2026 | [arxiv](https://arxiv.org/abs/2608.20335) | [github](https://github.com/ant-research/4DAnyone) | 2026-09-02 |
 | 6 | [DepthLab: From Partial to Complete](3D/PAPER_DepthLab.md) | arXiv 2024 | [arxiv](https://arxiv.org/abs/2412.18153) | [github](https://github.com/ant-research/DepthLab) | 2026-09-02 |
 | 5 | [DUSt3R: Geometric 3D Vision Made Easy](3D/PAPER_DUSt3R.md) | CVPR 2024 | [arxiv](https://arxiv.org/abs/2312.14132) | [github](https://github.com/naver/dust3r) | 2026-08-24 |
@@ -144,4 +154,5 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
-| 1 | [Fashion Outfit Complementary Item Retrieval](Recommendation/PAPER_CSA-Net.md) | CVPR 2020 | [paper](https://openaccess.thecvf.com/content_CVPR_2020/papers/Lin_Fashion_Outfit_Complementary_Item_Retrieval_CVPR_2020_paper.pdf) | - | 2026-09-02 |
+| 2 | [Text-Conditioned Outfit Recommendation with Hybrid Attention Layer](Recommendation/PAPER_TCOR.md) | IEEE Access 2023 | [paper](https://ieeexplore.ieee.org/document/10373838) | [github](https://github.com/WangXin93/text-conditioned-outfit-recommendation) | 2026-09-04 |
+| 1 | [Fashion Outfit Complementary Item Retrieval](Recommendation/PAPER_CSA-Net.md) | CVPR 2020 | [paper](https://openaccess.thecvf.com/content_CVPR_2020/papers/Lin_Fashion_Outfit_Complementary_Item_Retrieval_CVPR_2020_paper.pdf) | - | 2026-09-04 |
