@@ -106,7 +106,7 @@
 |---|---|---|---|---|---|
 | 13 | [Qwen-Drive-1.0: An Initial Step towards a Vision-Language Foundation Model for Autonomous Driving](VLM/PAPER_Qwen-Drive-1.0.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2609.00111) | [github](https://github.com/QwenLM/Qwen-Drive-1.0) | 2026-09-04 |
 | 12 | [Penguin-VL: Exploring the Efficiency Limits of VLM with LLM-based Vision Encoders](VLM/PAPER_Penguin-VL.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2603.06569) | [github](https://github.com/tencent-ailab/Penguin-VL) | 2026-08-24 |
-| 11 | [Qwen3-VL Technical Report](VLM/PAPER_Qwen3-VL.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2511.21631) | [github](https://github.com/QwenLM/Qwen3-VL) | 2026-08-04 |
+| 11 | [Qwen3-VL Technical Report](VLM/PAPER_Qwen3-VL.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2511.21631) | [github](https://github.com/QwenLM/Qwen3-VL) | 2026-09-07 |
 | 10 | [LFM2 Technical Report](VLM/PAPER_LFM2.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2511.23404) | - | 2026-07-29 |
 | 9 | [BLIP-2: Bootstrapping Language-Image Pre-training with Frozen Image Encoders and Large Language Models](VLM/PAPER_BLIP-2.md) | ICML 2023 | [arxiv](https://arxiv.org/abs/2301.12597) | [github](https://github.com/salesforce/LAVIS) | 2026-07-29 |
 | 8 | [Florence-2: Advancing a Unified Representation for a Variety of Vision Tasks](VLM/PAPER_Florence-2.md) | CVPR 2024 | [arxiv](https://arxiv.org/abs/2311.06242) | - | 2026-07-29 |
