@@ -12,6 +12,7 @@
   <a href="#-ocr"><img src="https://img.shields.io/badge/OCR-yellow.svg" alt="OCR"/></a>
   <a href="#-3d"><img src="https://img.shields.io/badge/3D-red.svg" alt="3D"/></a>
   <a href="#-recommendation"><img src="https://img.shields.io/badge/Recommendation-lightgrey.svg" alt="Recommendation"/></a>
+  <a href="#-forecasting"><img src="https://img.shields.io/badge/Forecasting-blue.svg" alt="Forecasting"/></a>
 </p>
 
 <p align="center">
@@ -30,6 +31,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 34 | [LLaDA-Image: Building Strong Image Generators with Fully Open Training Recipes](Diffusion/PAPER_LLaDA-Image.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2609.03796) | [github](https://github.com/inclusionAI/LLaDA-Image) | 2026-09-08 |
 | 33 | [Mage-Flow: A 4B Image Generation and Editing Stack with Mage-VAE](Diffusion/PAPER_Mage-Flow.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2607.19064) | [github](https://github.com/microsoft/Mage) | 2026-07-29 |
 | 32 | [DAR: Rethinking Cross-Layer Information Routing in Diffusion Transformers](Diffusion/PAPER_DAR.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.20708) | - | 2026-07-15 |
 | 31 | [SFD: Semantics Lead the Way — Harmonizing Semantic and Texture Modeling with Asynchronous Latent Diffusion](Diffusion/PAPER_SFD.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2512.04926) | [project](https://yuemingpan.github.io/SFD.github.io/) | 2026-07-09 |
@@ -104,9 +106,10 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
-| 13 | [Qwen-Drive-1.0: An Initial Step towards a Vision-Language Foundation Model for Autonomous Driving](VLM/PAPER_Qwen-Drive-1.0.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2609.00111) | [github](https://github.com/QwenLM/Qwen-Drive-1.0) | 2026-09-04 |
+| 14 | [Qwen2.5-VL Technical Report](VLM/PAPER_Qwen2.5-VL.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2502.13923) | [github](https://github.com/QwenLM/Qwen2.5-VL) | 2026-09-08 |
+| 13 | [Qwen-Drive-1.0: An Initial Step towards a Vision-Language Foundation Model for Autonomous Driving](VLM/PAPER_Qwen-Drive-1.0.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2609.00111) | [github](https://github.com/QwenLM/Qwen-Drive-1.0) | 2026-09-08 |
 | 12 | [Penguin-VL: Exploring the Efficiency Limits of VLM with LLM-based Vision Encoders](VLM/PAPER_Penguin-VL.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2603.06569) | [github](https://github.com/tencent-ailab/Penguin-VL) | 2026-08-24 |
-| 11 | [Qwen3-VL Technical Report](VLM/PAPER_Qwen3-VL.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2511.21631) | [github](https://github.com/QwenLM/Qwen3-VL) | 2026-09-07 |
+| 11 | [Qwen3-VL Technical Report](VLM/PAPER_Qwen3-VL.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2511.21631) | [github](https://github.com/QwenLM/Qwen3-VL) | 2026-09-08 |
 | 10 | [LFM2 Technical Report](VLM/PAPER_LFM2.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2511.23404) | - | 2026-07-29 |
 | 9 | [BLIP-2: Bootstrapping Language-Image Pre-training with Frozen Image Encoders and Large Language Models](VLM/PAPER_BLIP-2.md) | ICML 2023 | [arxiv](https://arxiv.org/abs/2301.12597) | [github](https://github.com/salesforce/LAVIS) | 2026-07-29 |
 | 8 | [Florence-2: Advancing a Unified Representation for a Variety of Vision Tasks](VLM/PAPER_Florence-2.md) | CVPR 2024 | [arxiv](https://arxiv.org/abs/2311.06242) | - | 2026-07-29 |
@@ -122,7 +125,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
-| 7 | [Multimodal OCR: Parse Anything from Documents](VLM-OCR/PAPER_dots-mocr.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2603.13032) | [github](https://github.com/rednote-hilab/dots.mocr) | 2026-09-04 |
+| 7 | [Multimodal OCR: Parse Anything from Documents](VLM-OCR/PAPER_dots-mocr.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2603.13032) | [github](https://github.com/rednote-hilab/dots.mocr) | 2026-09-08 |
 | 6 | [MinerU2.5: A Decoupled Vision-Language Model for Efficient High-Resolution Document Parsing](VLM-OCR/PAPER_MinerU2.5.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2509.22186) | [github](https://github.com/opendatalab/MinerU) | 2026-08-13 |
 | 5 | [ColPali: Efficient Document Retrieval with Vision Language Models](VLM-OCR/PAPER_ColPali.md) | ICLR 2025 | [arxiv](https://arxiv.org/abs/2407.01449) | [github](https://github.com/illuin-tech/colpali) | 2026-08-04 |
 | 4 | [PaddleOCR-VL-1.6: Expanding the Frontier of Document Parsing with Under-Optimized Region Refinement and Progressive Post-Training](VLM-OCR/PAPER_PaddleOCR-VL-1.6.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.03264) | [github](https://github.com/PaddlePaddle/PaddleOCR) | 2026-08-13 |
@@ -157,3 +160,12 @@
 |---|---|---|---|---|---|
 | 2 | [Text-Conditioned Outfit Recommendation with Hybrid Attention Layer](Recommendation/PAPER_TCOR.md) | IEEE Access 2023 | [paper](https://ieeexplore.ieee.org/document/10373838) | [github](https://github.com/WangXin93/text-conditioned-outfit-recommendation) | 2026-09-04 |
 | 1 | [Fashion Outfit Complementary Item Retrieval](Recommendation/PAPER_CSA-Net.md) | CVPR 2020 | [paper](https://openaccess.thecvf.com/content_CVPR_2020/papers/Lin_Fashion_Outfit_Complementary_Item_Retrieval_CVPR_2020_paper.pdf) | - | 2026-09-04 |
+
+## 📂 Forecasting
+
+| No | Title | Venue | Paper | Code | Updated |
+|---|---|---|---|---|---|
+| 4 | [Chronos: Learning the Language of Time Series](Forecasting/PAPER_Chronos.md) | TMLR 2024 | [arxiv](https://arxiv.org/abs/2403.07815) | [github](https://github.com/amazon-science/chronos-forecasting) | 2026-09-08 |
+| 3 | [A decoder-only foundation model for time-series forecasting](Forecasting/PAPER_TimesFM.md) | ICML 2024 | [arxiv](https://arxiv.org/abs/2310.10688) | [github](https://github.com/google-research/timesfm) | 2026-09-08 |
+| 2 | [iTransformer: Inverted Transformers Are Effective for Time Series Forecasting](Forecasting/PAPER_iTransformer.md) | ICLR 2024 (Spotlight) | [arxiv](https://arxiv.org/abs/2310.06625) | [github](https://github.com/thuml/iTransformer) | 2026-09-08 |
+| 1 | [A Time Series is Worth 64 Words: Long-term Forecasting with Transformers](Forecasting/PAPER_PatchTST.md) | ICLR 2023 | [arxiv](https://arxiv.org/abs/2211.14730) | [github](https://github.com/yuqinie98/PatchTST) | 2026-09-08 |
