@@ -106,6 +106,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 15 | [Qwen2-VL: Enhancing Vision-Language Model's Perception of the World at Any Resolution](VLM/PAPER_Qwen2-VL.md) | arXiv 2024 | [arxiv](https://arxiv.org/abs/2409.12191) | [github](https://github.com/QwenLM/Qwen2-VL) | 2026-09-08 |
 | 14 | [Qwen2.5-VL Technical Report](VLM/PAPER_Qwen2.5-VL.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2502.13923) | [github](https://github.com/QwenLM/Qwen2.5-VL) | 2026-09-08 |
 | 13 | [Qwen-Drive-1.0: An Initial Step towards a Vision-Language Foundation Model for Autonomous Driving](VLM/PAPER_Qwen-Drive-1.0.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2609.00111) | [github](https://github.com/QwenLM/Qwen-Drive-1.0) | 2026-09-08 |
 | 12 | [Penguin-VL: Exploring the Efficiency Limits of VLM with LLM-based Vision Encoders](VLM/PAPER_Penguin-VL.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2603.06569) | [github](https://github.com/tencent-ailab/Penguin-VL) | 2026-08-24 |
