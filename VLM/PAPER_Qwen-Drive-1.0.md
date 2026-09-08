@@ -13,6 +13,7 @@
 | **공개 범위** | ⚠️ **추론(inference) 코드만**. 학습 코드·데이터 파이프라인·RL 전부 미공개 |
 | **사용한 외부 재료** | Qwen3.5-4B (공유 VLM 백본) · Qwen3.5-Plus / Qwen3.7-Plus / Qwen3.5-Flash (데이터 재작성·필터·심판, 전부 **비공개 API**) · nuScenes / nuScenes-OccNet / OpenScene(nuPlan) (인식 학습) · NAVSIM / WOD-E2E / PhysicalAI-AV (계획 학습) · 공개 주행 VQA 24종 |
 | **가중치 구성** | VLM 9.1GB + planner-sft 2.1GB + planner-rl 2.1GB + perception 0.5GB |
+| **백본 구조 출처** | 논문에 없음 → [Qwen3.5-4B 모델 카드](https://huggingface.co/Qwen/Qwen3.5-4B)에서 확보: `32층 = 8 × (3 Gated DeltaNet + 1 Gated Attention)`, hidden 2560, FFN 9216, vocab 250k, 262K native. 보조 확인: [Qwen3.5-Omni TR](https://arxiv.org/abs/2604.15804) |
 | **문서 성격** | ⚠️ **Related Work 절이 아예 없는 릴리스 리포트**. 참고문헌 105편은 전부 본문 인라인. 자체 설계 요소 대부분에 ablation 없음 |
 
 ![Qwen-Drive-1.0 성능 개요](figures/qwen_drive_fig1.png)
@@ -36,6 +37,8 @@
 - **VLM (Vision-Language Model, 시각-언어 모델)**: 이미지와 텍스트를 같이 받아 텍스트를 뱉는 모델. 여기선 Qwen3.5-4B.
 - **VLA (Vision-Language-Action)**: VLM에 "행동(궤적·제어)" 출력을 얹은 계열. 이 논문이 속한 갈래.
 - **GQA (Grouped-Query Attention, 그룹 질의 어텐션)**: 여러 query head가 Key/Value head 하나를 나눠 쓰는 어텐션. Qwen3.5는 **gated linear attention과 GQA softmax attention을 번갈아** 쓰고, 이 논문은 그중 **GQA softmax 층 8개의 KV 캐시만** 가져다 쓴다.
+- **Gated DeltaNet (GDN)**: Qwen3.5의 linear attention(선형 어텐션) 모듈. softmax를 안 쓰므로 KV 캐시가 자라지 않아 긴 시퀀스에 유리하다. Qwen3.5-4B는 **GDN 3개 + Gated Attention 1개**를 한 블록으로 8번 반복한다(→ §아키텍처 "VLM이 강제한 기하"). Planning Expert가 읽는 캐시는 **Gated Attention 층에서만** 나온다.
+- **Gated Attention**: 위 블록에서 유일하게 진짜 softmax attention을 하는 층. query 16 heads / KV 4 heads / head_dim 256 — 이 세 숫자가 그대로 Planning Expert의 attention 기하를 결정한다.
 - **KV cache(키·밸류 캐시)**: 모델이 프롬프트를 읽으면서 이미 계산해둔 Key/Value. 원래는 생성 속도를 위한 재활용 장치인데, 이 논문은 이걸 **"장면 요약본"으로 재해석해 궤적 생성기에 먹인다**.
 - **joint attention(합동 어텐션)**: cross-attention처럼 분리하지 않고, 자기 Key/Value와 상대 Key/Value를 **이어붙여 한 번에** attention하는 방식.
 - **RoPE (Rotary Position Embedding) / mRoPE**: 토큰 위치를 회전 각도로 주입하는 방식. m은 multimodal — 시간·세로·가로 축을 나눠 배정. 이 논문은 궤적 토큰을 **프롬프트 마지막 토큰 바로 다음 번호**에 꽂아 "말이 이어지는" 것처럼 만든다.
@@ -307,6 +310,54 @@
 **RoPE 트릭**: 궤적 토큰의 위치를 VLM 프롬프트 **마지막 토큰 바로 다음 번호**에 꽂습니다. LLM 입장에서는 "말이 계속 이어지는" 것처럼 보이고, 궤적 토큰은 캐시 안의 텍스트·이미지 토큰과 자연스러운 상대거리를 갖게 됩니다. 프리픽스 마지막 토큰이 항상 텍스트라서 mRoPE 세 축이 같은 anchor를 공유합니다.
 
 **블록 구조는 VLM의 것을 그대로 흉내**냅니다 — fused QKV projection에 head별 출력 gate, query/key의 head별 RMSNorm, GQA, SwiGLU FFN.
+
+### ⭐ 왜 32층·4층당 1캐시·head_dim 256인가 — VLM이 강제한 기하
+
+*왜 이 절을 두나: Planning Expert의 숫자들이 자유로운 설계 선택처럼 보이지만 사실상 전부 백본이 지시한 값이다. 그 근거는 논문에 없고 [Qwen3.5-4B 모델 카드](https://huggingface.co/Qwen/Qwen3.5-4B)에 있다.*
+
+Qwen3.5-4B의 실제 층 구조는 이렇습니다.
+
+```
+32층 = 8 × ( 3 × [Gated DeltaNet → FFN]  +  1 × [Gated Attention → FFN] )
+                    ↑ linear attention(선형 어텐션)     ↑ 진짜 softmax attention
+
+Gated DeltaNet : value 32 heads / query·key 16 heads, head_dim 128
+Gated Attention: query 16 heads / key-value 4 heads,  head_dim 256   ← KV 캐시 출처
+Hidden 2560, FFN 9216, vocab 250k (Qwen3-VL의 150k에서 확장), 262K native context
+```
+
+이걸 `PlanningExpertConfig`와 나란히 놓으면 **전부 강제된 값**이라는 게 드러납니다.
+
+| Planning Expert 설정 | 값 | 출처 |
+|---|---|---|
+| `num_attention_heads` | 16 | Gated Attention의 query head 수 |
+| `num_key_value_heads` | 4 | Gated Attention의 KV head 수 |
+| `head_dim` | **256** | Gated Attention의 head_dim |
+| `num_hidden_layers` | **32** | VLM 층 수와 동일 |
+| `layers_per_kv` | **4** | **블록 하나 = 3 GDN + 1 Gated Attention = 4층** |
+| 캐시 개수 (`num_kv_sources`) | **8** | Gated Attention 층 개수 = 8 |
+
+#### 논문에도 저장소 문서에도 없는 사실 — 깊이 1:1 대응
+
+VLM의 Gated Attention 층은 인덱스 **3, 7, 11, 15, 19, 23, 27, 31**(각 블록의 마지막)입니다. Expert 코드는 `scene_cache[index // 4]`로 캐시를 고릅니다. 그러면:
+
+```
+Expert 층  0~3  ──▶ 캐시 0 ──▶ VLM 층 3   (블록 0의 끝)
+Expert 층  4~7  ──▶ 캐시 1 ──▶ VLM 층 7   (블록 1의 끝)
+Expert 층  8~11 ──▶ 캐시 2 ──▶ VLM 층 11  (블록 2의 끝)
+   ...
+Expert 층 28~31 ──▶ 캐시 7 ──▶ VLM 층 31  (블록 7의 끝)
+```
+
+즉 **Expert 층 i는 자기와 같은 깊이에 있는 VLM 블록의 캐시를 읽습니다.** 32층 대 32층, 4층 블록 단위로 1:1 정렬 — "얕은 층은 얕은 표현을, 깊은 층은 깊은 표현을" 받는 구조입니다. **논문은 "각 캐시가 연속 4개 층을 조건화한다"고만 쓰고 이 깊이 대응은 언급하지 않습니다.**
+
+#### 부작용 — 강제된 폭 비대칭
+
+Expert의 **residual(잔차) 폭은 1024인데 attention hidden은 16 × 256 = 4096**입니다. 4배 확장이 왜 필요했냐면, **VLM의 head_dim 256에 맞춰야 KV를 이어붙일 수 있기 때문**입니다. 자유롭게 고른 값이 아니라 강제된 비대칭입니다.
+
+반면 **FFN은 3584로 VLM의 9216을 안 따라갑니다** — 여기는 자유 설계 영역. 즉 **attention 쪽은 백본에 종속, FFN·residual 폭은 독립**이라는 경계가 명확합니다.
+
+저장소 문서가 *"attention 기하와 rotary 파라미터, `layers_per_kv`는 VLM이 지시하는 값이니 독립적으로 바꾸지 말라"*고 적어둔 이유가 이것으로 정확히 설명됩니다.
 
 ### 그림 5 — 계획의 두 가지 모드
 
@@ -882,7 +933,7 @@ WOD-E2E 8대 링 rig와 PAI-AV 6대 rig — **인식 학습 데이터에 전혀 
 | 항목 | 값 |
 |---|---|
 | LLM hidden / ViT 채널 / BEV embed | 2560 / 1024 / 256 |
-| Expert 기하 | hidden 1024, FFN 3584, 32층, query head 16 × head_dim 256, KV head 4, **layers_per_kv 4** |
+| Expert 기하 | hidden 1024, FFN 3584, 32층, query head 16 × head_dim 256, KV head 4, **layers_per_kv 4** — **attention 쪽 수치는 전부 VLM이 강제한 값** (→ §아키텍처 "VLM이 강제한 기하") |
 | Expert RoPE | rope_theta 1e7, partial_rotary_factor 0.25, mrope_section (11, 11, 10) |
 | 궤적 | future 50, history 16(→ 15), 10Hz, scale (165.0, 25.0, **1.5703125**) |
 | 샘플러 | 10 스텝, noise_seed 42(샘플 k는 42+k), min_one_minus_t 0.1, max_reasoning_tokens 256 |
@@ -950,6 +1001,15 @@ WOD-E2E 8대 링 rig와 PAI-AV 6대 rig — **인식 학습 데이터에 전혀 
 - **자체 설계 요소 중 ablation이 있는 것이 거의 없습니다.** KV 캐시 조건화 vs cross-attention, x-예측 vs v-예측, 저주파 부분공간, W={7,8,9}, σ=0.03, γ=0.6, adaLN 201M — **전부 근거 실험 없음.** 검증된 건 RL 보상 혼합(Fig 11)과 데이터 규모(Fig 12)뿐.
 - **Related Work 절이 아예 없습니다.** 참고문헌 105편이 전부 본문 인라인이고, RL의 SDE 전환 계보(DDPO / Flow-GRPO / DanceGRPO)는 인용되지 않습니다.
 - Table 1의 Stage 2 이득을 head-only **joint** 행(33.49/51.15) 기준으로 계산해 +10.46/+9.84로 제시하는데, head-only **nuScenes** 행(35.60/55.55) 기준이면 +8.35/+5.44입니다. 같은 데이터끼리 비교한다는 점에서 joint 기준이 타당하긴 하나, 프레이밍은 유리한 쪽을 골랐습니다.
+- **최적화 하이퍼파라미터 전무** — 배치 크기, 학습률 절대값, 총 스텝, GPU 대수, 학습 시간 어느 것도 없습니다. 있는 것은 "BEV head 학습률 = VLM의 20배", "VL 데이터 2~3 에폭", "비교군은 24 에폭" 세 개뿐. ⚠️ **단, 이것은 Qwen-Drive만의 문제가 아니라 Qwen 집안 전체의 관례입니다** — 실제로 확인한 결과는 아래 표.
+
+| 소스 | 토큰 수 | 시퀀스 길이 | 단계 구조 | **학습률** | **배치** | **GPU 시간** |
+|---|---|---|---|---|---|---|
+| Qwen3-VL (2511.21631) | ✅ 2.17T | ✅ 8K→32K→262K | ✅ 4단계 | ❌ | ❌ | ❌ (1만 GPU만) |
+| Qwen3.5-Omni (2604.15804) | ✅ 4T (모달별 분해) | ✅ 32K→262K | ✅ 3+3단계 | ❌ | ❌ | ❌ |
+| Qwen3.5-4B 모델 카드 | ❌ | ✅ 262K native | "Pre/Post-training" 한 줄 | ❌ | ❌ | ❌ |
+
+Qwen3.5-Omni는 토큰 수를 **모달리티별로 쪼개서까지** 공개합니다(S2 4조 토큰 = 텍스트 0.92T / 오디오 1.99T / 이미지 0.95T / 비디오 0.14T / 비디오-오디오 0.29T). 그런데 학습률은 한 글자도 없습니다. → **"데이터는 소수점까지, 옵티마이저는 침묵"**이 일관된 성격이며, 여기서 더 파도 안 나옵니다. 대안은 §Q&A Q4 참조.
 
 ### 논문이 스스로 밝힌 한계
 
@@ -1155,6 +1215,90 @@ BEV 정답은 카메라에서 안 나옵니다. **라이다 + HD맵 + 사람 라
 
 ---
 
+### Q4. "Qwen을 그대로 따라왔다"면 Qwen3-VL 리포트에서 학습 방법을 참고하면 되지 않나?
+
+**부분적으로는 됩니다. 그런데 정작 필요한 숫자(학습률·배치)는 거기서도 못 얻습니다.** 실제로 세 소스를 확인한 결과입니다.
+
+#### 결론 — Qwen3-VL 리포트도 학습률·배치를 안 밝힌다
+
+[[paper_qwen3_vl]] 정리 문서에 이미 적혀 있습니다.
+
+> **인프라**: Alibaba Cloud PAI-Lingjun. Megatron-LM 기반 하이브리드 병렬, 최대 1만 GPU. **(GPU-시간·FLOPs는 미공개)**
+
+그리고 "이 리포트의 가장 큰 약점" 절에도 **"학습 FLOPs·GPU-시간 없음"**이 들어 있습니다. Qwen3-VL이 공개한 것은 **토큰 수(2.17T), 시퀀스 길이, 에폭 수**까지이고 **학습률·배치 크기·optimizer·스케줄은 없습니다.** Qwen3.5-Omni·Qwen3.5-4B 모델 카드도 마찬가지(→ §급소 "방법론적 공백"의 확인 표).
+
+즉 Qwen-Drive가 학습 수치를 안 적은 건 실수가 아니라 **집안 관례를 그대로 따른 것**입니다.
+
+#### 상속이 확인되는 것 (코드로 검증됨)
+
+Qwen-Drive의 백본 Qwen3.5-4B는 Qwen3-VL의 다음 세대입니다. 저장소 코드에서 계보가 그대로 보입니다.
+
+| Qwen3-VL이 정한 것 | Qwen-Drive 코드에서 확인 |
+|---|---|
+| MRoPE 축 분할 | `mrope_section = (11, 11, 10)`, `rope_theta 1e7`, `partial_rotary 0.25` |
+| **좌표를 [0, 1000] 정규화** (Qwen2.5-VL은 절대 픽셀) | 주행 VQA 박스를 **[0, 1000)으로 정규화**한다고 논문에 명시 |
+| **T-RoPE 폐기 → 타임스탬프를 그냥 글자로 쓰기** | `frame: k` 태그를 **평범한 어휘 토큰**으로. view tag 8종도 마찬가지 |
+| native resolution + 픽셀 예산 | history 174,080px(320p) / current 921,600px(720p) |
+| patch 16 / temporal patch 2 / merge 2×2 | 동일 |
+
+⚠️ **다만 구조는 갈라졌습니다.** Qwen3.5는 Gated DeltaNet과 Gated Attention을 번갈아 쓰는 하이브리드인데 Qwen3-VL은 dense/MoE Transformer입니다. 이 부분의 답은 Qwen3-VL이 아니라 **Qwen3.5-4B 모델 카드**에 있습니다(→ §아키텍처 "VLM이 강제한 기하").
+
+#### 가져올 수 있는 것 — 3단계로
+
+**✅ Level A: 데이터·후학습 방법론 (여기가 진짜 값집니다)**
+
+| Qwen3-VL | Qwen-Drive의 대응 |
+|---|---|
+| 후학습 SFT **약 120만 샘플**, 32K로 1 epoch → 256K로 1 epoch | Stage 2 **154만 예제**, VL은 2~3 epoch — **규모가 거의 같은 급.** 가장 쓸모 있는 대응점 |
+| Qwen2.5-VL-32B로 캡션 **리캡션 재작성** | Qwen3.5-Plus로 주행 VQA **재작성** |
+| Query Filtering + Response Filtering 2단계 | Qwen3.5-Flash **일관성 필터** (5.53M → 3.09M) |
+| **텍스트 전용 데이터를 섞어 언어 능력 보존** | **일반 VL 31%** 리허설 (망각 방지의 핵심, → Q1) |
+| 난이도 큐레이션 / pass rate 필터 | CoC 트레이스 **다단계 감사** + 희귀도 우선 샘플링 |
+
+**⚠️ Level B: 참고는 되지만 그대로는 못 씀**
+
+Qwen3-VL의 **4단계 사전학습(S0~S3, 2.17T 토큰)은 VLM을 밑바닥부터 만드는 과정**입니다. Qwen-Drive Stage 2는 **이미 완성된 4B 위의 도메인 SFT**라 목적도 규모도 다릅니다. 굳이 대응시키자면 Qwen3-VL의 **후학습 SFT 단계**가 맞는 짝이지, 사전학습이 아닙니다.
+
+**❌ Level C: Qwen3-VL에 아예 없는 것 — 그리고 이게 Qwen-Drive의 핵심**
+
+1. **perception 회귀 손실과 next-token 손실을 한 배치에 섞을 때의 균형.** Qwen 계열 어디에도 선례가 없습니다. Qwen-Drive가 준 힌트는 **"BEV head 학습률 = VLM의 20배"**와 **"비활성 브랜치에 더미 입력"** 두 개뿐.
+2. **flow matching 궤적 생성기 학습.** Qwen VLM 계보에 존재하지 않습니다.
+3. **RL 알고리즘이 완전히 다릅니다.** Qwen3-VL은 **SAPO**(Qwen 자체 알고리즘, 텍스트 토큰 정책), Qwen-Drive는 **이름 없는 순수 on-policy REINFORCE + 저주파 부분공간 탐색**(연속값 궤적 정책). 서로 이식이 안 됩니다.
+
+#### 학습 단계 구조는 확실히 계승됐다
+
+| | Qwen3.5-Omni | Qwen-Drive |
+|---|---|---|
+| **S1** | LLM 잠그고 **인코더·어댑터만** 학습 | VLM 잠그고 **BEV head만** 학습 |
+| **S2** | **전부 unfreeze**, 광범위 멀티모달 4T 토큰 | **전부 unfreeze**, 인식+VQA 1.54M |
+| **S3** | 롱컨텍스트 특화 | (해당 없음 — 대신 Planner 학습) |
+
+#### 그래서 빠진 숫자는 어디서 — 실전 매칭표
+
+| 필요한 것 | 어디서 |
+|---|---|
+| 구조·규약 (RoPE, head 기하, layers_per_kv) | ✅ **Qwen3.5-4B 모델 카드 + Qwen-Drive 코드** — 완전히 규명됨 |
+| 데이터 큐레이션 방법론 | ✅ Qwen3-VL 리포트 |
+| 단계 구조·freeze 전략 | ✅ Qwen3.5-Omni 리포트 |
+| 토큰 예산 감각 | ✅ Qwen3-VL 2.17T / Omni 4T |
+| **학습률·배치** | ❌ Qwen 계열 전멸 → ⭐ **[[paper_paligemma_2]]**가 유일한 정량 근거 (모델 클수록 최적 전이 학습률 낮아짐, 1편 2e-5에 3B는 ×0.5, 10B/28B는 ×0.25) |
+| perception loss + NTP 혼합 균형 | ❌ 선례 없음 — 직접 스윕 |
+| flow matching 궤적 정책 | ❌ Diffusion Policy / π0 계열 |
+| 연속 액션 RL | ❌ (SAPO는 텍스트 토큰용) → DDPO / Flow-GRPO |
+
+#### ⭐ 진짜 이식 가치가 있는 건 하이퍼파라미터가 아니다
+
+Qwen 계열에서 Qwen-Drive로 **가져다 쓰면 실제로 좋아질 것 같은 것 4가지**입니다.
+
+1. **제곱근 재가중 per-token 손실** (Qwen3-VL) — 텍스트/멀티모달 목적함수 균형 장치. Qwen-Drive는 perception loss와 NTP를 섞으면서 이걸 안 쓰고 "학습률 20배"로 뭉갰습니다. **Table 8에서 3D 감독이 일반 능력을 −0.92 깎은 게 바로 이 균형 문제**입니다.
+2. **텍스트 전용 데이터로만 하는 증류가 멀티모달 추론까지 올린다** (Qwen3-VL). Qwen-Drive는 증류를 아예 안 씁니다.
+3. **On-Policy Distillation** (Qwen3.5-Omni) — 오디오 질의 응답 품질이 텍스트 질의보다 낮으니, **같은 질의의 텍스트 조건 응답을 오디오 조건 응답의 증류 타깃으로** 삼습니다. Qwen-Drive에 그대로 옮기면 "추론 조건 있는 응답을 조건 없는 응답의 타깃으로" — **추론 트레이스가 24.2%뿐인 상황에 딱 맞는 미사용 카드**입니다.
+4. **멀티모달 필요성 필터** (Qwen3-VL) — "이미지 없이도 맞히는 문제는 버린다". Qwen-Drive의 주행 VQA 필터는 **"원본 주석과 의미가 일치하나"만** 봤지 **"진짜 시각이 필요한 문제인가"는 안 봤습니다.** 살아남은 3.09M 중 상당수가 여전히 텍스트만으로 풀릴 가능성이 남아 있고, 계획 성능이 안 오르는 이유 중 하나일 수 있습니다.
+
+덤으로 — Qwen3-VL은 **리워드 해킹 실패담**(도구를 태스크와 무관하게 딱 1번만 부르는 쪽으로 붕괴)을 솔직히 적어뒀습니다. Qwen-Drive의 RL에서 저주파 부분공간이 다양성을 죽인 것(minADE 0.39 → 0.43)이 **같은 유형의 실패**인데, 이건 논문에 안 적혀 있습니다.
+
+---
+
 ## 🔗 다른 논문들과의 연결
 
 *왜 두나: 이 논문의 각 부품은 이미 정리해둔 다른 논문들의 직계 후손이라, 계보를 붙여두면 재사용 지점이 보인다.*
@@ -1162,7 +1306,9 @@ BEV 정답은 카메라에서 안 나옵니다. **라이다 + HD맵 + 사람 라
 | 축 | 연결 | 관계 |
 |---|---|---|
 | **백본 재사용 패러다임** | [[reference_pretrained_backbone_reuse_landscape]] | 사전학습 VLM을 **구조 무수정 + 외부 head**로 확장하는 분기의 대표 사례 |
-| **Qwen 계열 VLM** | [[paper_qwen3_vl]] | Qwen3.5-4B의 직계 조상. Interleaved-MRoPE·DeepStack·[0,1000) 그라운딩 규약이 이 논문의 전제 |
+| **Qwen 계열 VLM** | [[paper_qwen3_vl]] | Qwen3.5-4B의 직계 조상. Interleaved-MRoPE·[0,1000) 그라운딩 규약·텍스트 타임스탬프가 이 논문의 전제. 데이터 큐레이션 방법론의 최고 참고서지만 **학습률·배치는 여기도 없음** (→ Q4) |
+| **백본 구조 근거** | Qwen3.5-4B 모델 카드 · Qwen3.5-Omni (2604.15804) | 논문에 없는 `8 × (3 GDN + 1 Gated Attention)` 구조의 출처. Planning Expert의 32층·4층당1캐시·head_dim 256이 전부 여기서 강제됨 (→ §아키텍처). Omni의 **On-Policy Distillation**은 Qwen-Drive의 미사용 카드 |
+| **미세조정 학습률** | [[paper_paligemma_2]] | Qwen 계열이 침묵하는 전이 학습률을 **유일하게 정량 스윕**한 논문. "모델 클수록 최적 LR 낮아짐"이 Stage 2 재현의 실질 근거 |
 | **동결 백본 + 어댑터** | [[paper_blip2]], [[paper_phi4_mini]] | "얼린 백본에 작은 다리를 붙인다"의 원조. Qwen-Drive는 반대로 **Stage 2에서 백본을 푸는** 선택을 했고, Table 1이 그 이유(3D가 안 들어있음) |
 | **깊이 추정** | [[paper_depth_anything_v2]], [[paper_depthlab]], [[paper_murre]] | BEV의 병목인 "카메라에 깊이가 없다"를 다루는 다른 갈래. 이 논문은 **깊이 감독 없이** 확률분포로 우회 |
 | **캘리브 없는 3D** | [[paper_dust3r]], [[paper_r3]], [[paper_abot_recon]] | rig·캘리브 의존을 없애려는 흐름. Q3 참조 |
@@ -1184,7 +1330,8 @@ BEV 정답은 카메라에서 안 나옵니다. **라이다 + HD맵 + 사람 라
 
 ## 🧠 관련 메모리
 
-- [[paper_qwen3_vl]] — 백본 계보
+- [[paper_qwen3_vl]] — 백본 계보 + 데이터 큐레이션 참고서
+- [[paper_paligemma_2]] — Qwen 계열이 안 밝히는 전이 학습률의 유일한 정량 근거
 - [[reference_pretrained_backbone_reuse_landscape]] — 백본 재사용 분기 분류
 - [[paper_dust3r]] · [[paper_r3]] · [[paper_abot_recon]] · [[paper_murre]] · [[paper_depth_anything_v2]] — 캘리브·깊이 갈래
 - [[paper_uniref_image_edit]] · [[paper_z_image]] · [[paper_qwen_image_2_rl]] — flow matching + RL 계열
