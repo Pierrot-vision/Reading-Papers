@@ -52,7 +52,7 @@
 | **self-attention(자기 어텐션)** | 토큰들끼리 서로 얼마나 관련 있는지 점수를 매겨 섞는 연산. **순서를 모른다**(permutation-invariant) — 이게 시간축에 쓰면 안 되는 이유. |
 | **FFN (Feed-Forward Network, 순전파 신경망)** | 토큰 하나 안에서 차원을 늘렸다 줄이는 2층 MLP. 토큰마다 **같은 가중치**로 독립 적용된다. |
 | **LayerNorm(층 정규화)** | 벡터 하나를 평균 0, 분산 1로 맞추는 연산. **무엇을 벡터 하나로 보느냐**에 따라 의미가 완전히 달라진다. |
-| **RevIN (Reversible Instance Normalization)** | 시계열마다 평균·분산을 빼고 예측 후 되돌리는 기법. 분포 변화(distribution shift) 대응용. 이 논문의 뒤집힌 LayerNorm이 사실상 같은 효과를 낸다. |
+| **RevIN (Reversible Instance Normalization)** | 시계열마다 평균·분산을 빼고 예측 후 되돌리는 기법. 분포 변화(distribution shift) 대응용. 논문은 "뒤집힌 LayerNorm이 이 역할을 겸한다"고 주장하지만, **코드에는 RevIN이 별도로 또 들어 있다**(→ 7.7). |
 | **positional embedding(위치 임베딩)** | 토큰 순서를 알려주는 벡터. iTransformer는 **필요 없다** — 순서가 FFN 뉴런 배치에 암묵적으로 저장되기 때문. |
 
 ### 평가·분석
@@ -139,6 +139,130 @@ Hˡ      = LayerNorm(H'ˡ + FFN(H'ˡ))                     # 시계열 표현
 
 ![Figure 8 — 변량 샘플링 비율에 따른 성능(좌)과 메모리(우)](figures/itransformer_fig8.png)
 
+### 3.4 입력이 실제로 어떻게 생겼나 — 텐서를 직접 찍어보면
+
+*이 절을 두는 이유: "축을 뒤집는다"가 추상적으로 들리는데, 실제 텐서 모양과 `Linear`가 먹는 축을 보면 한 줄로 끝나는 이야기이기 때문. 그리고 PatchTST와 헷갈리기 쉬운 지점이 정확히 여기다.*
+
+#### 텐서의 실제 모양 = `[[온도][습도][풍속]]`
+
+Weather 데이터(온도·습도·풍속 3변량, lookback 96)를 실제로 넣어 찍어보면 이렇다.
+
+```
+원본 x            : (1, 96, 3)     (B, 시간, 변량)
+  x[0, 0, :]      = [20.1, 65.0, 2.1]   ← 1시의 온도/습도/풍속
+
+permute(0, 2, 1)  : (1, 3, 96)     (B, 변량, 시간)   ★ inverted의 전부
+  xi[0, 0] = [20.1, 20.2, 20.3, ... ] 96개   ← 온도 한 줄
+  xi[0, 1] = [65.0, 64.9, 64.8, ... ] 96개   ← 습도 한 줄
+  xi[0, 2] = [ 2.1,  2.1,  2.1, ... ] 96개   ← 풍속 한 줄
+
+Linear(96 → 512)  : (1, 3, 512)    ← 변량 3개가 각각 512차원 토큰 1개
+```
+
+#### "같이 들어간다" ≠ "섞인다"
+
+`nn.Linear`는 **마지막 차원에만** 작용하고 앞 차원은 전부 배치로 취급한다.
+
+```
+xi          [1, 3, 96]
+             ↑  ↑   ↑
+             │  │   └── Linear가 먹는 축 (96 → 512)
+             └──┴────── 전부 "배치". 여기 있는 것들끼리는 절대 안 섞임
+```
+
+즉 `Linear(96→512)`는 온도 행에 한 번, 습도 행에 한 번, 풍속 행에 한 번 **같은 가중치로 따로** 적용된다. 실험으로 확인한 결과:
+
+| 방식 | 입력 한 행 | 습도 행만 0으로 바꿨을 때 **온도 출력** 변화량 |
+|---|---|---|
+| **iTransformer** | `[20.1, 20.2, ... 96개]` (온도만) | **0.0** ← 전혀 안 변함 |
+| **Informer 계열** (channel-mixing) | `[20.1, 65.0, 2.1]` (한 시점의 세 변량) | **37.42** ← 즉시 오염 |
+
+Informer 계열은 `Linear(3 → 512)`가 세 변량을 한 벡터에서 곱해 더하므로 **첫 층에서 이미 뭉개진다.** iTransformer는 0.0이다 — **임베딩 단계에서는 변량이 완전히 격리되고, 섞이는 곳은 오직 self-attention 한 군데다.** 그래서 "어텐션 점수 행렬 = 변량 상관 행렬"이라는 해석(→ 3.2)이 성립한다.
+
+#### 텐서 모양 추적 (Traffic 공식 설정: 862변량, lookback 96, d_model 512, e_layers 4, batch 16)
+
+`scripts/multivariate_forecasting/Traffic/iTransformer.sh` 값 그대로다.
+
+```
+입력              [16,  96, 862]      B, 시간, 변량
+  ↓ 시간축 정규화 (평균·표준편차를 시간축에서 빼고 나눔)   ← use_norm, 별도 RevIN (→ 7.7)
+                  [16,  96, 862]
+  ↓ permute       ★ 여기가 "inverted"의 전부
+                  [16, 862,  96]      B, 변량, 시간
+  ↓ Linear(96 → 512)                  ← 시계열 96칸이 벡터 1개로 눌림
+                  [16, 862, 512]      B, 변량, d_model
+  ↓ Encoder 4층: attention은 862개 토큰끼리 (862×862 상관행렬)
+                  [16, 862, 512]
+  ↓ Linear(512 → 96)                  ← 예측 길이만큼 펴기
+                  [16, 862,  96]
+  ↓ permute + 역정규화
+출력              [16,  96, 862]      B, 예측길이, 변량
+```
+
+#### PatchTST와의 분기점은 `reshape` 한 줄이다
+
+임베딩 코드만 보면 둘은 거의 같다.
+
+```python
+# PatchTST  (thuml/Time-Series-Library, layers/Embed.py:174)
+self.value_embedding = nn.Linear(patch_len, d_model, bias=False)   # Linear(16 → 512)
+
+# iTransformer  (thuml/iTransformer, layers/Embed.py:130)
+self.value_embedding = nn.Linear(c_in, d_model)                    # Linear(96 → 512)
+```
+
+둘 다 `permute`로 표를 세로로 자르고, 한 변량의 시간 조각에 Linear를 건다. 입력 차원이 16이냐 96이냐만 다르다. 그래서 논문이 variate token을 "패치 크기를 lookback 전체로 키운 극단(the extreme case of Patching)"이라 부르는 것도 정확하다.
+
+**갈라지는 건 그 다음 한 줄이다.**
+
+```python
+# PatchTST — 변량을 배치로 흡수  (layers/Embed.py:187)
+x = torch.reshape(x, (x.shape[0] * x.shape[1], x.shape[2], x.shape[3]))
+# 결과: [B×862, 12, 512]   ← 시퀀스 = 패치 → 어텐션이 시간축 → 변량은 영원히 안 만남
+
+# iTransformer — 변량이 그대로 시퀀스  (model/iTransformer.py:57)
+enc_out = self.enc_embedding(x_enc, x_mark_enc)
+# 결과: [B, 862, 512]      ← 시퀀스 = 변량 → 어텐션이 변량축 → 여기서 비로소 만남
+```
+
+| | 시퀀스 축 | 어텐션이 비교하는 것 | 변량끼리 만나나 |
+|---|---|---|---|
+| **PatchTST** | 패치 (12개) | 같은 변량의 서로 다른 시간 구간 | ❌ **절대 안 만남** |
+| **iTransformer** | 변량 (862개) | 서로 다른 변량 | ✅ **오직 그것만** |
+
+**반증 — PatchTST를 극단으로 밀어도 iTransformer가 되지 않는다.** PatchTST에서 `patch_len = stride = seq_len = 96`으로 놓으면 토큰화는 완전히 같아진다(변량당 토큰 1개, `Linear(96→512)`). 그런데 그 뒤 `reshape(B×862, 1, 512)`라 시퀀스 길이가 1이고, **토큰 1개가 자기 자신하고만 어텐션 → 소프트맥스가 항등 연산 → 그냥 MLP가 된다.** 변량은 여전히 배치에 숨어 있기 때문이다. 즉 "극단적 패칭"은 **토큰화의 계보**를 설명하는 말이지 아키텍처가 같다는 뜻이 아니다.
+
+#### 임베딩 자체의 차이 하나 — 위치 임베딩
+
+```python
+# PatchTST
+x = self.value_embedding(x) + self.position_embedding(x)   # ← 더함
+
+# iTransformer (DataEmbedding_inverted)
+x = self.value_embedding(x)                                 # ← 없음. 끝.
+```
+
+PatchTST는 **패치의 순서가 중요하니까** 필요하고(1~16시 패치와 80~96시 패치는 다른 위치), iTransformer는 **변량에는 순서가 없으니까** 뺐다(온도가 1번이고 습도가 2번인 건 임의의 열 순서일 뿐). 이 한 줄이 두 모델의 시퀀스 축이 무엇인지 그대로 드러낸다.
+
+#### 나머지 실제 차이 (Traffic 862변량, lookback 96, d_model 512 기준)
+
+| | PatchTST | iTransformer |
+|---|---|---|
+| Linear 입력 | `Linear(16 → 512, bias=False)` | `Linear(96 → 512)` |
+| 위치 임베딩 | ✅ 있음 | ❌ 없음 |
+| 임베딩 후 모양 | `[B×862, 12, 512]` | `[B, 862, 512]` |
+| 어텐션 축 | 패치(시간) | 변량 |
+| 인코더 정규화 | **BatchNorm** (transpose 사이에 끼움) | **LayerNorm** |
+| 출력 헤드 | Flatten 후 `Linear(512×12=6144 → 96)` | `Linear(512 → 96)` |
+| 배치 1개당 어텐션 쌍 | 862 × 12² = 124,128 | 862² = **743,044** |
+| lookback 변경 | 자유 (패치 수만 늘어남) | **불가** — `Linear(96→512)`에 박혀 있음 |
+| 변량 개수 변경 | 자유 (배치 크기만 변함) | 자유 (시퀀스 길이만 변함) |
+| 변량 간 상관 | **못 봄** | **그것만 봄** |
+
+출력 헤드 크기 차이도 크다. PatchTST는 변량 하나의 패치 12개를 전부 flatten해 6144차원 → 96으로 보내는데, iTransformer는 512 → 96이다. **12배 작은 헤드**인데, 시간 정보를 이미 입력단 `Linear(96→512)`에서 다 눌러버렸기 때문이다.
+
+**마지막 줄이 실무에서 제일 아프다.** 논문이 자랑하는 "변량 개수 유연성"과 정반대로, **시간 길이는 완전히 경직**되어 있다. lookback 96으로 학습한 체크포인트는 336을 받지 못한다.
+
 ---
 
 ## 📊 실험 요약
@@ -194,6 +318,50 @@ Hˡ      = LayerNorm(H'ˡ + FFN(H'ˡ))                     # 시계열 표현
 
 ## 🔍 급소 — 확인된 문제들
 
+### 7.0 [독창성] "변량을 토큰으로"는 이미 있던 것이다 ⭐
+
+*이 절을 맨 앞에 두는 이유: 7.1 이하가 "이 방법이 얼마나 잘 되나"를 따진다면, 그보다 먼저 물어야 할 것은 "이게 새로운가"이기 때문.*
+
+2023년 기준으로 "각 개체 하나 = 토큰 하나, 어텐션으로 개체끼리 관계 학습"은 이미 여러 분야의 기본기였다.
+
+| 분야 | 모델 | 토큰이 무엇인가 |
+|---|---|---|
+| 집합 | **Set Transformer** (2019) | 집합의 원소 하나 |
+| 정형 데이터 | **TabTransformer** (2020) | **컬럼(피처) 하나** ← 사실상 동일한 발상 |
+| 다변량 시계열 | **MTGNN / StemGNN** (2020) | 변량 하나 = 그래프 노드, 변량 간 인접행렬 학습 |
+| 다변량 시계열 | **Crossformer** (ICLR **2023**) | cross-time + **cross-dimension** 2단계 어텐션 |
+| 다변량 시계열 | **TSMixer** (2023) | 시간축·피처축 교대 MLP mixing |
+
+특히 **Crossformer는 1년 앞서 같은 학회(ICLR)에서 변량 간 어텐션을 명시적으로 했다.** 논문 §2가 직접 그렇게 쓴다.
+
+> *"the third category refurbishes Transformer in both aspects of component and architecture. Representative (Zhang & Yan, 2023) explicitly captures the **cross-time and cross-variate dependencies**..."*
+
+즉 논문도 "변량 간 상관을 어텐션으로 잡는다"가 새롭지 않다는 걸 알고 있다. 그래서 논문이 내세우는 novelty는 그게 아니라 **Figure 3의 4분류표**다.
+
+| | 부품 수정 | 구조 수정 | 해당 모델 |
+|---|---|---|---|
+| 1분류 | ✅ | ❌ | Autoformer, Informer, FEDformer |
+| 2분류 | ❌ | ❌ | PatchTST, Stationary (전처리만) |
+| 3분류 | ✅ | ✅ | **Crossformer** |
+| **4분류** | **❌** | **✅** | **iTransformer (자기 자신뿐)** |
+
+> *"as the only one that belongs to the fourth category **to our best knowledge**"*
+
+**분류표를 만들었더니 자기 칸만 비어 있다.** novelty를 만들어내는 전형적 방식이다. "부품을 안 고쳤다"가 축이 되려면 그게 왜 중요한지 논증이 필요한데, 논문의 논거는 "부품은 이미 검증됐으니 구조가 문제다"라는 신념 진술에 가깝다.
+
+실질적으로 Crossformer와 다른 점은 하나뿐이다.
+
+```
+Crossformer   : 시간축 어텐션 있음 + 변량축 어텐션 있음   (2단계)
+iTransformer  : 시간축 어텐션 없음 + 변량축 어텐션 있음   ← 시간축을 통째로 삭제
+```
+
+**"변량을 토큰으로 쓴 것"이 아니라 "시간축을 아예 없앤 것"이 이 논문의 실제 베팅이다.** 그리고 그 베팅마저 절제 실험이 약하게 지지한다(→ 7.1) — 변량축 어텐션을 통째로 빼도 Traffic에서 7.7%밖에 안 나빠지고, 그 자리에 남는 "변량별 MLP"는 사실상 DLinear/TiDE 계열이다.
+
+**공정하게 남는 것:** ① 시계열 Transformer 판에서는 Informer(2021) 이후 3년간 아무도 기본값을 뒤집지 않았고, 이 논문이 그걸 했다. ② 5개 백본에 일괄 적용해 16.8~38.9% 개선을 보인 검증 규모(→ 4.2). ③ 변량 개수 유연성이라는 실무 부산물(→ 3.3). ④ 변량 어텐션의 원조격인 Crossformer를 Traffic 0.550 vs 0.428로 실제로 이겼다.
+
+> **정리: 이 논문은 발명 논문이 아니라 정리·검증 논문이다. 그게 나쁜 건 아니지만, Abstract와 Figure 3의 4분류표는 그걸 발명처럼 보이게 프레이밍한다.**
+
 ### 7.1 [해석 불일치] Ablation이 논문의 서사와 다른 얘기를 한다 ⭐
 
 Table 3(→ 4.3)을 축별로 분해하면 이렇게 읽힌다.
@@ -230,6 +398,50 @@ Table 3(→ 4.3)을 축별로 분해하면 이렇게 읽힌다.
 ### 7.6 [사소] Ethics Statement가 한 줄
 
 *"시계열 예측 문제만 다루므로 잠재적 윤리 위험이 없다."* 전력망·교통 인프라 예측 모델인데 성의 없는 처리다.
+
+### 7.7 [논문 ↔ 코드 괴리] 공식 저장소를 열면 셋이 다르다 ⭐
+
+*이 절을 두는 이유: 논문 서술만 읽고 구현하면 세 군데에서 어긋난다. 셋 다 논문의 핵심 주장과 직접 관련된다.*
+
+**(1) "MLP"라고 써놓고 코드는 Linear 한 장이다.**
+
+논문 §3.1:
+> *"Embedding and Projection are both implemented by multi-layer perceptron (MLP)."*
+
+```python
+# layers/Embed.py:130 — DataEmbedding_inverted
+self.value_embedding = nn.Linear(c_in, d_model)   # ← 층 1개. 활성함수도 없음
+# model/iTransformer.py
+self.projector = nn.Linear(configs.d_model, configs.pred_len, bias=True)   # ← 여기도 1장
+```
+
+입력단과 출력단이 각각 **선형층 1장**이고, 비선형은 Transformer 블록 안에만 있다. "MLP로 시계열 표현을 배운다"(→ 3.2의 FFN 서사)는 주장이 코드에서는 절반만 성립한다.
+
+**(2) LayerNorm이 RevIN을 겸한다고 했는데, 코드에는 RevIN이 따로 들어 있다.**
+
+논문 §3.2는 "뒤집힌 LayerNorm이 비정상성(non-stationarity)을 처리한다"고 주장한다. 그런데 `forecast()`의 첫 5줄:
+
+```python
+if self.use_norm:
+    # Normalization from Non-stationary Transformer
+    means = x_enc.mean(1, keepdim=True).detach()
+    x_enc = x_enc - means
+    stdev = torch.sqrt(torch.var(x_enc, dim=1, keepdim=True, unbiased=False) + 1e-5)
+    x_enc /= stdev
+```
+
+**임베딩에 들어가기 전에 시간축 기준 명시적 정규화가 별도로 있고**, 예측 후 되돌린다. Non-stationary Transformer에서 가져온 것이며 논문이 말한 LayerNorm 효과와는 **별개의 추가 장치**다. 즉 "LayerNorm만으로 된다"는 주장은 코드가 지지하지 않는다. (PatchTST도 같은 코드를 쓴다 — 즉 이건 iTransformer 고유 이점이 아니라 두 모델의 **공통 전제**다.)
+
+**(3) 타임스탬프를 "추가 변량 토큰"으로 넣는 미문서화 경로가 있다.**
+
+```python
+# layers/Embed.py:140
+x = self.value_embedding(torch.cat([x, x_mark.permute(0, 2, 1)], 1))
+# model/iTransformer.py:62
+dec_out = self.projector(enc_out).permute(0, 2, 1)[:, :, :N]  # 공변량은 출력에서 잘라냄
+```
+
+시각 정보(시/요일/월)를 **변량 축에 그냥 이어붙여** 토큰을 늘리고, 출력에서 앞 N개만 잘라 쓴다. 구조 변경이 0이다. **이건 Chronos-2의 `group_ids` 공변량 처리와 정확히 같은 발상**인데(→ `PAPER_Chronos.md` §3.4), 논문 본문은 이 경로를 거의 설명하지 않는다 — 코드 주석의 *"the potential to take covariates (e.g. timestamps) as tokens"* 한 줄이 전부다.
 
 ---
 
@@ -314,4 +526,5 @@ x = attention(x)             # 변량끼리 섞음
 
 - [PAPER_Chronos.md](PAPER_Chronos.md) — Chronos 계열. Chronos-2의 `GroupSelfAttention`이 iTransformer의 변량축 어텐션을 흡수한 후계이며, **대규모 사전학습 조건에서는 이 논문의 결론이 뒤집힌다**
 - [PAPER_TimesFM.md](PAPER_TimesFM.md) — 시계열 foundation model. **3.0에서 variate attention이 파라미터의 40%를 차지**하는데, 이 논문의 변량축 어텐션과 같은 발상이 대규모 사전학습 모델에 안착한 또 하나의 사례
+- [PAPER_PatchTST.md](PAPER_PatchTST.md) — 직전 세대. **임베딩 코드는 거의 같고(`Linear(P→d)` vs `Linear(L→d)`), 갈라지는 건 `reshape` 한 줄**이다(→ 3.4). 정규화(RevIN) 코드도 두 모델이 동일
 - `figures/itransformer_fig1.png`, `_fig4.png`, `_fig7.png`, `_fig8.png` — 본 문서에 삽입된 논문 그림
