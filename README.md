@@ -24,11 +24,11 @@
 
 ## 📰 News
 
-- **2026-09-10** — 📂 `LLM` 챕터 신설: **MiniMind** (교육용 밑바닥 LLM 학습 저장소) 리뷰 추가
-- **2026-09-08** — **Qwen2-VL** 리뷰 추가 (VLM) — Qwen2 → 2.5 → 3 VL 계보 완성
-- **2026-09-08** — 📂 `Forecasting` 챕터 신설: **PatchTST · iTransformer · TimesFM · Chronos** 시계열 4편 추가
-- **2026-09-08** — **LLaDA-Image** (Diffusion) · **Qwen2.5-VL** (VLM) 리뷰 추가
-- **2026-09-04** — 📂 `Deep Learning` 챕터 신설: **Astra & Looped Transformers** / **dots.mocr** (VLM-OCR) · **R³ · ABot-Recon** (3D) · **Qwen-Drive-1.0** (VLM) · **TCOR** (Recommendation) 추가
+- **2026-09-10** — 📂 `LLM` 챕터 신설: [MiniMind](LLM/PAPER_MiniMind.md) (교육용 밑바닥 LLM 학습 저장소) 리뷰 추가
+- **2026-09-08** — [Qwen2-VL](VLM/PAPER_Qwen2-VL.md) 리뷰 추가 (VLM) — Qwen2 → 2.5 → 3 VL 계보 완성
+- **2026-09-08** — 📂 `Forecasting` 챕터 신설: [PatchTST](Forecasting/PAPER_PatchTST.md) · [iTransformer](Forecasting/PAPER_iTransformer.md) · [TimesFM](Forecasting/PAPER_TimesFM.md) · [Chronos](Forecasting/PAPER_Chronos.md) 시계열 4편 추가
+- **2026-09-08** — [LLaDA-Image](Diffusion/PAPER_LLaDA-Image.md) (Diffusion) · [Qwen2.5-VL](VLM/PAPER_Qwen2.5-VL.md) (VLM) 리뷰 추가
+- **2026-09-04** — 📂 `Deep Learning` 챕터 신설: [Astra & Looped Transformers](Deep-Learning/PAPER_Astra-Looped-Transformers.md) / [dots.mocr](VLM-OCR/PAPER_dots-mocr.md) (VLM-OCR) · [R³](3D/PAPER_R3.md) · [ABot-Recon](3D/PAPER_ABot-Recon.md) (3D) · [Qwen-Drive-1.0](VLM/PAPER_Qwen-Drive-1.0.md) (VLM) · [TCOR](Recommendation/PAPER_TCOR.md) (Recommendation) 추가
 
 ---
 
