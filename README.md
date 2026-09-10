@@ -7,6 +7,7 @@
 <p align="center">
   <a href="#-deep-learning"><img src="https://img.shields.io/badge/Deep--Learning-9cf.svg" alt="Deep Learning"/></a>
   <a href="#-diffusion"><img src="https://img.shields.io/badge/Diffusion-blueviolet.svg" alt="Diffusion"/></a>
+  <a href="#-llm"><img src="https://img.shields.io/badge/LLM-success.svg" alt="LLM"/></a>
   <a href="#-vlm"><img src="https://img.shields.io/badge/VLM-brightgreen.svg" alt="VLM"/></a>
   <a href="#-vlm-ocr"><img src="https://img.shields.io/badge/VLM--OCR-yellowgreen.svg" alt="VLM-OCR"/></a>
   <a href="#-ocr"><img src="https://img.shields.io/badge/OCR-yellow.svg" alt="OCR"/></a>
@@ -101,6 +102,12 @@
 |---|---|---|---|---|---|
 | 2 | [Improved Distribution Matching Distillation for Fast Image Synthesis](Diffusion-Distillation/PAPER_DMD2.md) | NeurIPS 2024 | [arxiv](https://arxiv.org/abs/2405.14867) | [github](https://github.com/tianweiy/dmd2) | 2026-05-22 |
 | 1 | [One-step Diffusion with Distribution Matching Distillation](Diffusion-Distillation/PAPER_DMD.md) | CVPR 2024 | [arxiv](https://arxiv.org/abs/2311.18828) | - | 2026-05-22 |
+
+## 📂 LLM
+
+| No | Title | Venue | Paper | Code | Updated |
+|---|---|---|---|---|---|
+| 1 | [MiniMind — Train a Tiny LLM from Scratch (Educational Repo)](LLM/PAPER_MiniMind.md) | GitHub 2026 | - | [github](https://github.com/jingyaogong/minimind) | 2026-09-10 |
 
 ## 📂 VLM
 
