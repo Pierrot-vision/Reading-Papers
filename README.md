@@ -24,11 +24,11 @@
 
 ## 📰 News
 
+- **2026-09-14** — [Scaffolding Minds](VLM/PAPER_Scaffolding-Minds.md) (VLM) · [TimesFM-3](Forecasting/PAPER_TimesFM-3.md) (Forecasting) 리뷰 추가
 - **2026-09-10** — 📂 `LLM` 챕터 신설: [MiniMind](LLM/PAPER_MiniMind.md) (교육용 밑바닥 LLM 학습 저장소) 리뷰 추가
 - **2026-09-08** — [Qwen2-VL](VLM/PAPER_Qwen2-VL.md) 리뷰 추가 (VLM) — Qwen2 → 2.5 → 3 VL 계보 완성
 - **2026-09-08** — 📂 `Forecasting` 챕터 신설: [PatchTST](Forecasting/PAPER_PatchTST.md) · [iTransformer](Forecasting/PAPER_iTransformer.md) · [TimesFM](Forecasting/PAPER_TimesFM.md) · [Chronos](Forecasting/PAPER_Chronos.md) 시계열 4편 추가
 - **2026-09-08** — [LLaDA-Image](Diffusion/PAPER_LLaDA-Image.md) (Diffusion) · [Qwen2.5-VL](VLM/PAPER_Qwen2.5-VL.md) (VLM) 리뷰 추가
-- **2026-09-04** — 📂 `Deep Learning` 챕터 신설: [Astra & Looped Transformers](Deep-Learning/PAPER_Astra-Looped-Transformers.md) / [dots.mocr](VLM-OCR/PAPER_dots-mocr.md) (VLM-OCR) · [R³](3D/PAPER_R3.md) · [ABot-Recon](3D/PAPER_ABot-Recon.md) (3D) · [Qwen-Drive-1.0](VLM/PAPER_Qwen-Drive-1.0.md) (VLM) · [TCOR](Recommendation/PAPER_TCOR.md) (Recommendation) 추가
 
 ---
 
@@ -123,6 +123,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 16 | [Scaffolding Minds: Optimizing Latent Visual Target Representations for Multimodal Reasoning](VLM/PAPER_Scaffolding-Minds.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2608.19669) | - | 2026-09-14 |
 | 15 | [Qwen2-VL: Enhancing Vision-Language Model's Perception of the World at Any Resolution](VLM/PAPER_Qwen2-VL.md) | arXiv 2024 | [arxiv](https://arxiv.org/abs/2409.12191) | [github](https://github.com/QwenLM/Qwen2-VL) | 2026-09-08 |
 | 14 | [Qwen2.5-VL Technical Report](VLM/PAPER_Qwen2.5-VL.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2502.13923) | [github](https://github.com/QwenLM/Qwen2.5-VL) | 2026-09-08 |
 | 13 | [Qwen-Drive-1.0: An Initial Step towards a Vision-Language Foundation Model for Autonomous Driving](VLM/PAPER_Qwen-Drive-1.0.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2609.00111) | [github](https://github.com/QwenLM/Qwen-Drive-1.0) | 2026-09-08 |
@@ -183,7 +184,8 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 5 | [TimesFM-3: A zero-shot foundation model for multivariate forecasting](Forecasting/PAPER_TimesFM-3.md) | Google Blog 2026 | [blog](https://research.google/blog/timesfm-3-a-zero-shot-foundation-model-for-multivariate-forecasting/) | [github](https://github.com/google-research/timesfm) | 2026-09-14 |
 | 4 | [Chronos: Learning the Language of Time Series](Forecasting/PAPER_Chronos.md) | TMLR 2024 | [arxiv](https://arxiv.org/abs/2403.07815) | [github](https://github.com/amazon-science/chronos-forecasting) | 2026-09-08 |
-| 3 | [A decoder-only foundation model for time-series forecasting](Forecasting/PAPER_TimesFM.md) | ICML 2024 | [arxiv](https://arxiv.org/abs/2310.10688) | [github](https://github.com/google-research/timesfm) | 2026-09-08 |
+| 3 | [A decoder-only foundation model for time-series forecasting](Forecasting/PAPER_TimesFM.md) | ICML 2024 | [arxiv](https://arxiv.org/abs/2310.10688) | [github](https://github.com/google-research/timesfm) | 2026-09-14 |
 | 2 | [iTransformer: Inverted Transformers Are Effective for Time Series Forecasting](Forecasting/PAPER_iTransformer.md) | ICLR 2024 (Spotlight) | [arxiv](https://arxiv.org/abs/2310.06625) | [github](https://github.com/thuml/iTransformer) | 2026-09-08 |
 | 1 | [A Time Series is Worth 64 Words: Long-term Forecasting with Transformers](Forecasting/PAPER_PatchTST.md) | ICLR 2023 | [arxiv](https://arxiv.org/abs/2211.14730) | [github](https://github.com/yuqinie98/PatchTST) | 2026-09-08 |
