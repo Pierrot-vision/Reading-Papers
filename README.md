@@ -24,11 +24,11 @@
 
 ## 📰 News
 
+- **2026-09-22** — [SAMformer](Forecasting/PAPER_SAMformer.md) (Forecasting, ICML 2024 Oral) 리뷰 추가
 - **2026-09-14** — [Scaffolding Minds](VLM/PAPER_Scaffolding-Minds.md) (VLM) · [TimesFM-3](Forecasting/PAPER_TimesFM-3.md) (Forecasting) 리뷰 추가
 - **2026-09-10** — 📂 `LLM` 챕터 신설: [MiniMind](LLM/PAPER_MiniMind.md) (교육용 밑바닥 LLM 학습 저장소) 리뷰 추가
 - **2026-09-08** — [Qwen2-VL](VLM/PAPER_Qwen2-VL.md) 리뷰 추가 (VLM) — Qwen2 → 2.5 → 3 VL 계보 완성
 - **2026-09-08** — 📂 `Forecasting` 챕터 신설: [PatchTST](Forecasting/PAPER_PatchTST.md) · [iTransformer](Forecasting/PAPER_iTransformer.md) · [TimesFM](Forecasting/PAPER_TimesFM.md) · [Chronos](Forecasting/PAPER_Chronos.md) 시계열 4편 추가
-- **2026-09-08** — [LLaDA-Image](Diffusion/PAPER_LLaDA-Image.md) (Diffusion) · [Qwen2.5-VL](VLM/PAPER_Qwen2.5-VL.md) (VLM) 리뷰 추가
 
 ---
 
@@ -117,7 +117,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
-| 1 | [MiniMind — Train a Tiny LLM from Scratch (Educational Repo)](LLM/PAPER_MiniMind.md) | GitHub 2026 | - | [github](https://github.com/jingyaogong/minimind) | 2026-09-10 |
+| 1 | [MiniMind — Train a Tiny LLM from Scratch (Educational Repo)](LLM/PAPER_MiniMind.md) | GitHub 2026 | - | [github](https://github.com/jingyaogong/minimind) | 2026-09-22 |
 
 ## 📂 VLM
 
@@ -184,6 +184,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 6 | [SAMformer: Unlocking the Potential of Transformers in Time Series Forecasting with Sharpness-Aware Minimization and Channel-Wise Attention](Forecasting/PAPER_SAMformer.md) | ICML 2024 (Oral) | [arxiv](https://arxiv.org/abs/2402.10198) | [github](https://github.com/romilbert/samformer) | 2026-09-22 |
 | 5 | [TimesFM-3: A zero-shot foundation model for multivariate forecasting](Forecasting/PAPER_TimesFM-3.md) | Google Blog 2026 | [blog](https://research.google/blog/timesfm-3-a-zero-shot-foundation-model-for-multivariate-forecasting/) | [github](https://github.com/google-research/timesfm) | 2026-09-14 |
 | 4 | [Chronos: Learning the Language of Time Series](Forecasting/PAPER_Chronos.md) | TMLR 2024 | [arxiv](https://arxiv.org/abs/2403.07815) | [github](https://github.com/amazon-science/chronos-forecasting) | 2026-09-08 |
 | 3 | [A decoder-only foundation model for time-series forecasting](Forecasting/PAPER_TimesFM.md) | ICML 2024 | [arxiv](https://arxiv.org/abs/2310.10688) | [github](https://github.com/google-research/timesfm) | 2026-09-14 |
