@@ -24,11 +24,11 @@
 
 ## 📰 News
 
+- **2026-09-23** — [Qwen-Image-2.1](Diffusion/PAPER_Qwen-Image-2.1.md) (Diffusion) 리뷰 추가 — 2.0의 첫 공개 구현 릴리스 분석
 - **2026-09-22** — [SAMformer](Forecasting/PAPER_SAMformer.md) (Forecasting, ICML 2024 Oral) 리뷰 추가
 - **2026-09-14** — [Scaffolding Minds](VLM/PAPER_Scaffolding-Minds.md) (VLM) · [TimesFM-3](Forecasting/PAPER_TimesFM-3.md) (Forecasting) 리뷰 추가
 - **2026-09-10** — 📂 `LLM` 챕터 신설: [MiniMind](LLM/PAPER_MiniMind.md) (교육용 밑바닥 LLM 학습 저장소) 리뷰 추가
 - **2026-09-08** — [Qwen2-VL](VLM/PAPER_Qwen2-VL.md) 리뷰 추가 (VLM) — Qwen2 → 2.5 → 3 VL 계보 완성
-- **2026-09-08** — 📂 `Forecasting` 챕터 신설: [PatchTST](Forecasting/PAPER_PatchTST.md) · [iTransformer](Forecasting/PAPER_iTransformer.md) · [TimesFM](Forecasting/PAPER_TimesFM.md) · [Chronos](Forecasting/PAPER_Chronos.md) 시계열 4편 추가
 
 ---
 
@@ -42,6 +42,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 35 | [Qwen-Image-2.1](Diffusion/PAPER_Qwen-Image-2.1.md) | Blog 2026 | [blog](https://qwen.ai/blog?id=qwen-image-2.1) | [github](https://github.com/QwenLM/Qwen-Image-2.1) | 2026-09-23 |
 | 34 | [LLaDA-Image: Building Strong Image Generators with Fully Open Training Recipes](Diffusion/PAPER_LLaDA-Image.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2609.03796) | [github](https://github.com/inclusionAI/LLaDA-Image) | 2026-09-08 |
 | 33 | [Mage-Flow: A 4B Image Generation and Editing Stack with Mage-VAE](Diffusion/PAPER_Mage-Flow.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2607.19064) | [github](https://github.com/microsoft/Mage) | 2026-07-29 |
 | 32 | [DAR: Rethinking Cross-Layer Information Routing in Diffusion Transformers](Diffusion/PAPER_DAR.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.20708) | - | 2026-07-15 |
