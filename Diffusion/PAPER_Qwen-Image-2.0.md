@@ -36,7 +36,7 @@ GitHub 렌더링 호환을 위해 수식은 LaTeX 보다 평문 표기를 우선
 | arXiv abstract | https://arxiv.org/abs/2605.10730 |
 | arXiv PDF | https://arxiv.org/pdf/2605.10730 |
 | 공식 코드 | **2.0 가중치·코드는 끝내 미공개** (HF `Qwen/Qwen-Image-2.0` = 401, API·Qwen Chat 전용). https://github.com/QwenLM/Qwen-Image 는 1.x 계열(Qwen-Image / Edit-2509·2511 / 2512 / Layered) 코드 |
-| 공개 구현 (후속) | **Qwen-Image-2.1** (2026-09-20): https://github.com/QwenLM/Qwen-Image-2.1 · https://huggingface.co/Qwen/Qwen-Image-2.1 · diffusers `QwenImage21Pipeline` — 본 리포트 설계를 1:1 로 구현한 첫 공개 가중치 (→ Q6) |
+| 공개 구현 (후속) | **Qwen-Image-2.1** (2026-09-20): https://github.com/QwenLM/Qwen-Image-2.1 · https://huggingface.co/Qwen/Qwen-Image-2.1 · diffusers `QwenImage21Pipeline` — 본 리포트 설계를 1:1 로 구현한 첫 공개 가중치 (→ Q6, 상세는 [PAPER_Qwen-Image-2.1.md](PAPER_Qwen-Image-2.1.md)) |
 | 분야 | Text-to-Image, Image Editing, Diffusion Transformer, Text Rendering |
 | 외부 의존 모델 | Qwen3-VL (조건 인코더, **동결**) |
 | 백본 규모 | 리포트 미공개. 이름은 "MMDiT" 지만 실제로는 single-stream (→ §4.2). 후속 2.1 실측: DiT **7.12B** (32층·폭 4096) + Qwen3-VL-8B **8.77B** + VAE **0.34B** |
@@ -369,59 +369,13 @@ PE 는 사용자 질의를 **구조적이고 디테일이 풍부한 프롬프트
 
 ### Q6. 후속 Qwen-Image-2.1 (2026-09-20 공개) 은 이 2.0 리포트와 얼마나 관련 있나?
 
-*2.0 은 가중치·코드가 끝내 공개되지 않았고, 2.1 은 반대로 가중치·추론 코드는 있지만 기술 리포트가 없다. 둘을 맞대어 보면 서로의 빈칸이 채워지는지 확인하려는 절.*
+*2.1 은 이 리포트의 설계를 처음 공개한 가중치라, 대조 결과가 이 문서의 서술을 검증·정정한다.*
 
-**결론**: 2.1 은 **2.0 기술 리포트가 설명한 모델 계열을 처음으로 공개한 구현체**로 보는 게 맞다. 2.0 리포트는 사실상 **2.1 의 빠진 기술 문서** 역할을 한다. 다만 Qwen 이 공식적으로 "2.1 은 2.0 기반"이라고 밝힌 적은 없다 — 2.1 블로그·README 는 2.0 을 한 번도 언급하지 않고, 전작으로는 Qwen-Image-Layered 만 언급한다. 아래 근거는 가중치·코드를 직접 대조해 얻은 것이다.
+→ **상세 대조(VAE 79M/259M 일치 증거, 리포트↔코드 1:1 표, 2.1 신규 항목, 관련도 판정)는 [PAPER_Qwen-Image-2.1.md](PAPER_Qwen-Image-2.1.md) Q1 로 분리.**
 
-#### ① 결정적 증거: VAE 파라미터 수가 똑같다
+> 한 줄: **2.1 = 이 리포트의 블록·인코더·VAE·PE 를 그대로 구현한 첫 공개 가중치 + (block-causal 마스크 · t=0 조건 · prefix KV cache · RGBA) 개조판.**
 
-2.0 리포트 Table 1 과 2.1 가중치 실측(safetensors 헤더)을 비교했다.
-
-| | 인코더 | 디코더 | 설정 |
-|---|---|---|---|
-| 2.0 리포트 Table 1 | 79M | 259M | f16c64, residual |
-| 2.1 가중치 실측 | **78.68M** | **259.04M** | f16c64 (z=64, 16배), `is_residual: true` |
-
-- 디코더를 인코더보다 훨씬 크게 만드는 비대칭 구조까지 같다.
-- 같은 표의 다른 f16 VAE 들은 수치가 다르다: Wan2.2(150M/555M), Stepvideo(110M/389M), HunyuanImage-3.0(389M/871M).
-- 따라서 **2.1 의 VAE 는 2.0 VAE 를 RGBA(4채널) 입출력으로 확장한 것**으로 보는 게 가장 자연스럽다. 채널을 하나 늘려도 첫 conv 와 마지막 conv 만 조금 커지므로 파라미터 수는 거의 변하지 않는다.
-
-#### ② 리포트 문장 ↔ 2.1 코드 1:1 대조
-
-| 2.0 리포트 원문 | 2.1 코드/가중치 | 일치 |
-|---|---|---|
-| "frozen Qwen3-VL" 조건 인코더 | Qwen3-VL-8B, 추론 시 hidden state 만 사용 | ✅ |
-| "visual representation hₓ is **replaced** by the VAE latent" (식 1) | `joint_hidden_states[:, image_pad_mask] = hidden_states` (VLM 이미지 칸을 VAE 잠재로 덮어씀) | ✅ 문장 그대로 구현 |
-| "h′ = αh", bias 제거한 곱셈 변조 (식 2) | `hidden_states * (1 + scale)`, shift 없음, 전 층 `bias=False` | ✅ |
-| SwiGLU (식 3) | `QwenImage21SwiGLUFeedForward` | ✅ |
-| QK-Norm 은 RMSNorm, 나머지는 LayerNorm | `norm_q/norm_k = RMSNorm`, `img_norm1/2 = LayerNorm` | ✅ 정규화 종류까지 일치 |
-| MSRoPE 합동 위치 계산 | 3축 RoPE (16/56/56). 1.x 설정값과도 같음 | ✅ |
-| "**unified stream**", "**shared** transformer backbone" | `txt_mlp` 없음, 모든 토큰이 가중치 공유 | ✅ (→ ③) |
-| PE 는 Qwen3.5-9B 에서 초기화 | 공개된 PE 2종이 `Qwen3_5ForConditionalGeneration`, 32층, 폭 4096 | ✅ |
-| 2.0-RL 리포트: "CFG is also **integrated into the student** after OPD" | 2.1 `true_cfg_scale` 기본값 1.0, "guidance 없이 샘플링하도록 설계" | ✅ 2.1 이 CFG 없이 도는 이유가 이것으로 설명됨 |
-
-→ 2.1 코드는 리포트의 식 1~3 과 Figure 8 캡션의 문장들을 **하나도 빠짐없이** 구현하고 있다.
-
-(참고: VLM 이미지 칸 1개 = 32×32px 를 VAE 잠재 토큰 2×2(16px 네 개)로 늘린 뒤 덮어쓴다. 그래서 VLM 이 이미지를 "이해한 결과"는 **이미지 뒤에 오는 지시문 토큰에만** 간접적으로 남는다 — Fig 8 의 빨간 X 를 그대로 구현한 것.)
-
-#### ③ 2.1 에서 새로 생긴 것 (2.0 리포트에는 없음)
-
-| 항목 | 2.0 리포트 | 2.1 |
-|---|---|---|
-| attention 마스크 | 언급 없음 (양방향으로 추정) | **block-causal** (텍스트는 causal, 이미지는 블록 안 양방향) |
-| 조건 토큰의 timestep | 언급 없음 | **t=0 고정** (`causal_condition`). 1.x Edit-2511 의 `zero_cond_t` 를 계승 |
-| prefix KV cache | 없음 | 있음 (다중 참조 편집 가속) |
-| modulation 구조 | "bias 제거"만 서술 | **32층 전체가 한 벌 공유** (67M) |
-| 투명 배경 | 없음 | VAE RGBA 확장, Layered 기능 흡수 |
-| 참조 이미지 수 | "interleaved multi-image" | 최대 10장, 원본+별도 마스크 입력 |
-| 4-NFE 증류판 (DMD) | 있음 (Qwen-Image-2.0-Distillation) | **공개 안 됨** (40스텝만) |
-| 파라미터 수 | 미공개 | 7.12B (DiT) |
-
-변화를 한 줄로 줄이면 **"2.0 블록 설계는 그대로 두고, 마스크와 시간 조건을 바꿔 LLM 식 캐시가 가능하도록 개조했다"** 이다. 블록 내부의 가중치 구조는 바뀌지 않았고 attention 이 서로를 보는 규칙만 바뀌었다. 그래서 2.0 체크포인트를 이어서 학습했을 가능성도 있다 (근거는 없음).
-
-벤치마크(Qwen-Image-Bench, 2.1 블로그)에서 **2.1(60.28)이 2.0 Pro(57.84)보다 높다**. 따라서 "2.0 설계 계열의 후속 체크포인트"로 보는 게 맞다. 같은 그래프에 내부 비공개 모델 Qwen Image 3 Pro(62.36)도 올라 있다.
-
-#### ④ 이 대조로 정정한 이 문서의 부분 (2026-09)
+**이 대조로 정정한 이 문서의 부분 (2026-09)**
 
 | 위치 | 이전 서술 | 정정 |
 |---|---|---|
@@ -431,21 +385,6 @@ PE 는 사용자 질의를 **구조적이고 디테일이 풍부한 프롬프트
 | §1 | "공식 코드: 전작 기준, 2.0 통합 예정" / "백본 규모 미공개" | 2.0 은 끝내 미공개. 공개 구현은 2.1, 규모는 DiT 7.12B + 인코더 8.77B + VAE 0.34B |
 | §1 | "라이선스 CC BY 4.0" | 논문 라이선스일 뿐. 2.1 가중치는 **비상업 Qwen Research** |
 | §4.0 | "빨강 = timestep 토큰" | 2.1 코드엔 timestep 토큰 없음 → 불확실 |
-
-#### ⑤ 관련도 판정
-
-| 관점 | 관련도 |
-|---|---|
-| 구조 (블록, 인코더, VAE, PE) | **매우 높음.** 리포트 서술과 코드가 1:1 로 대응하고 VAE 파라미터 수가 일치 |
-| 학습 레시피 (Pretrain → SFT → GRPO → OPD/CFG 통합) | **높음 (추정).** 2.1 은 레시피를 공개하지 않았지만 CFG 없는 기본값이 2.0-RL 서술과 맞음 |
-| 추론 방식 | **다름.** block-causal 과 KV cache 는 2.1 에서 새로 생김 |
-| 공식 연결 | **없음.** Qwen 은 2.1 을 2.0 과 연결 짓는 말을 하지 않음 |
-
-2.1 을 공부할 때 두 문서의 역할을 나누면:
-- **2.0 리포트(+ 2.0-RL 리포트)**: 왜 이렇게 만들었는지와 어떻게 학습했는지
-- **2.1 코드**: 실제로 어떻게 돌아가는지, 그리고 새로 추가된 마스크와 캐시
-
-> 한 줄: **2.1 = 2.0 리포트의 블록·인코더·VAE·PE 를 그대로 구현한 첫 공개 가중치 + (block-causal 마스크 · t=0 조건 · prefix KV cache · RGBA) 개조판. VAE 79M/259M 일치가 결정적 증거.**
 
 ---
 
