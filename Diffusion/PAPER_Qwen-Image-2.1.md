@@ -15,6 +15,8 @@
 7. **Q&A**: 2.0 리포트와의 관계 / 급소
 8. **한 줄 요약 / 관련 링크**
 
+> Q&A: Q1 2.0 리포트와의 관계 · Q2 급소 · Q3 전체 구조·flow · Q4 block-causal · Q5 causal_condition + prefix KV cache · Q6 마스크 규칙 ↔ 실제 코드
+
 > ⚠️ **공개 범위 주의**: 학습 코드·데이터·레시피·ablation·편집 벤치·속도 수치는 전부 미공개. 아래 수치 중 "실측"은 safetensors 헤더로 직접 센 값, "추정"은 코드 크기로 직접 계산한 값이다.
 
 ---
@@ -156,7 +158,7 @@ joint_hidden_states[:, image_pad_mask] = hidden_states         # VLM 값 → VAE
 - 따라서 VLM 이 이미지를 "이해한 결과"는 **이미지 뒤에 오는 지시문 토큰에만** 간접적으로 남는다 (2.0 리포트 Fig 8 의 빨간 X 와 동일).
 - VLM 입력은 마지막 층의 **정규화(RMSNorm) 전** hidden state. transformers 5.x 는 정규화 후 값을 돌려주므로 파이프라인이 forward hook 으로 정규화를 무력화한다 (주석: 빼면 "글자 렌더링부터 망가진다").
 
-**④ block-causal 마스크 + causal_condition → KV cache**
+**④ block-causal 마스크 + causal_condition → KV cache** (의미 풀이 → Q4·Q5, 코드 줄 매칭 → Q6)
 
 ```python
 allowed = ((q_idx >= kv_idx) | same_image_block) & key_valid[b, kv_idx]
@@ -176,6 +178,8 @@ allowed = ((q_idx >= kv_idx) | same_image_block) & key_valid[b, kv_idx]
 - 2.0-RL 리포트의 "CFG is also integrated into the student model after OPD" 와 맞아떨어짐 (→ Q1).
 
 ### 4.4 추론 설정 (코드 기본값)
+
+*입력 하나가 파이프라인 전체를 지나는 흐름·텐서 모양은 → Q3.*
 
 | 항목 | 값 |
 |---|---|
@@ -349,10 +353,550 @@ allowed = ((q_idx >= kv_idx) | same_image_block) & key_valid[b, kv_idx]
 | 5 | **같은 환경에 설치 불가** | 메인 모델 `transformers>=5.17` ↔ PE `transformers==5.4.0` 고정 → 가상환경 2개 필요 |
 | 6 | **배치 ≠ 단일 추론** | 길이가 다른 프롬프트를 한 배치로 돌리면 짧은 프롬프트 뒤 padding 칸도 RoPE 위치를 차지 → 타깃 이미지 위치가 단독 실행과 달라짐 |
 | 7 | **라이선스 후퇴** | 1.x 전 라인은 Apache 2.0 → 2.1·PE 는 "FOR NON-COMMERCIAL PURPOSES ONLY", 상업 사용은 별도 계약 (model-business@notice.qwencloud.com) |
+| 8 | **출력이 항상 RGBA** | VAE 가 늘 4채널을 내므로 불투명 이미지도 PIL `RGBA` → `.save("x.jpg")` 가 "cannot write mode RGBA as JPEG" 에러. `.convert("RGB")` 또는 PNG 저장 (→ Q3 ⑦) |
+| 9 | **VAE 죽은 가중치** | 영상용 `time_conv` 12개 = 6.75M (VAE 의 2%) 가 이미지 경로에서 한 번도 안 쓰임 (→ Q3 ③) |
+| 10 | **2K 에서 shift 외삽** | `calculate_shift` 가 clamp 없는 선형식이라 2048²(16,384 토큰)에서 mu ≈ 1.31 — config 의 "max_shift 0.9 @ 8,192" 를 넘음 (→ Q3 ⑥) |
 
 추가로:
 - PE 는 thinking 모델이라 `max_new_tokens` 가 T2I 16,256 / 편집 24,000 — 재작성 한 번이 길다. T2I 는 `presence_penalty=1.5`, 편집은 0 (서로 바꾸면 조용히 분포가 달라짐).
 - `use_kv_cache` 토글 시 같은 시드도 다른 그림 (→ §6).
+
+### Q3. 전체 코드를 보고 — 전체 네트워크 구조와 데이터 flow 는?
+
+*§4 는 부품별 "무엇이 있나"를 정리했고, 이 답은 입력 한 건이 파이프라인·Transformer·VAE 코드를 차례로 지나며 텐서 모양이 어떻게 바뀌는지를 끝까지 따라간다.* 근거는 diffusers 의 `pipeline_qwenimage21.py` · `transformer_qwenimage21.py` · `autoencoder_kl_qwenimage21.py` 전부와 가중치 헤더 실측이다. 예시는 **참조 이미지 1장(1024²)으로 1024² 결과를 만드는 편집** 기준.
+
+#### ⓪ 전체 그림 한 장
+
+```
+ [사용자 입력] prompt + (참조 이미지 0~10장)
+        │
+        ├──────────────────────────────┐
+        ▼                              ▼
+ ① 전처리: 면적 1024², 32배수로 리사이즈
+   ├─ VLM용 사본: RGBA → 흰 배경 합성 → RGB
+   └─ VAE용 사본: RGBA 4채널, [-1,1]
+        │                              │
+        ▼                              ▼
+ ② Qwen3-VL-8B (동결)          ③ VAE 인코더 (f16c64)
+   시스템+이미지+지시문 →        4ch 이미지 → 64ch 잠재
+   마지막 층 hidden(정규화 전)   → 채널별 mean/std 정규화
+   [L, 4096]                      [4096 토큰, 64]
+        │                              │
+        └──────────┬───────────────────┘
+                   ▼          ④ 노이즈 잠재 [4096 토큰, 64]
+ ⑤ DiT 7B (32층 single-stream) ◀──────┘
+   step 0 : 전체 계산 + prefix K/V 저장 (prefill)
+   step 1~39: 타깃 토큰만 계산 (decode)
+   출력 = velocity [4096, 64] → Euler 한 걸음
+                   ▼
+ ⑥ 정규화 해제 → VAE 디코더 → [-1,1] clamp → RGBA 이미지
+```
+
+부품별 규모(실측): Qwen3-VL-8B 8.77B, DiT 7.12B, VAE 0.34B.
+
+#### ① 전처리 (`__call__` 1단계)
+
+- 참조 이미지는 원본 비율을 유지한 채 **면적 1024²(`output_resolution`), 32 의 배수**로 리사이즈 (`calculate_dimensions`).
+- 같은 리사이즈 결과에서 두 갈래로 나뉜다.
+  - **VLM용**: RGBA 라면 알파를 흰 배경 위에 합성해 RGB 로. 코드 주석: "체크포인트가 그렇게 학습됐다".
+  - **VAE용**: RGBA 4채널을 그대로 [-1,1] 로 정규화. 투명도 정보는 이쪽으로만 들어간다.
+- 결과 크기는 width/height 를 주면 그 값, 안 주면 마지막 참조 이미지 비율로 1024² 면적. T2I 는 1024² 가 기본.
+
+#### ② text/vision encoder: Qwen3-VL-8B (`_get_qwen_prompt_embeds`)
+
+**프롬프트 템플릿** — chat template 을 거치지 않고 문자열을 직접 만든다. 코드 주석에 따르면 두 방식은 토큰화 결과가 달라서, 체크포인트가 기대하는 쪽이 이 직접 만든 문자열이다.
+
+```
+<|im_start|>system\nComprehend and analyze the provided prompt.<|im_end|>\n
+<|im_start|>user\n<image1><|vision_start|><|image_pad|><|vision_end|> <image2>...지시문<|im_end|>\n
+<|im_start|>assistant\n
+```
+
+- 이미지가 지시문보다 **앞**에 온다. 그래야 지시문 토큰이 이미지를 보고 이해할 수 있다 (→ ④ ③ 에서 중요).
+
+**Qwen3-VL 내부 구조 (config 기준)**
+
+| 부분 | 구조 |
+|---|---|
+| ViT | 27층, 폭 1152, patch 16. 2×2 merge 후 **토큰 1개 = 32×32px**. DeepStack 으로 ViT 8·16·24층 feature 를 LLM 앞쪽 층에 더해 줌 |
+| LLM | 36층, 폭 4096, GQA(32 query 헤드 / 8 KV 헤드), Interleaved-MRoPE |
+| 예시 크기 | 참조 1024² → 64×64 패치 → merge → **1,024개 `<|image_pad|>` 토큰** |
+
+**출력 추출**
+- **마지막 층의 정규화(RMSNorm) 전** hidden state 를 쓴다. transformers 5.x 는 정규화 후 값을 돌려주므로 forward hook 으로 norm 층을 항등 함수로 바꿔 둔다.
+- padding(왼쪽 padding)을 제거하고, 앞쪽 시스템 프롬프트 토큰(`_drop_idx`개)을 잘라 낸다.
+- 결과 세 가지:
+  - `prompt_embeds` [B, L, 4096] — 예시 기준 L ≈ 1,024 이미지 칸 + 약 40 텍스트 토큰
+  - `prompt_embeds_mask` — 유효 토큰 표시
+  - `image_pad_mask` — 어느 위치가 이미지 칸인지 표시
+
+#### ③ VAE encoder (`autoencoder_kl_qwenimage21.py`)
+
+**구조: Wan 2.x 의 3D VAE 골격을 이미지 전용으로 특수화한 것**
+- `CausalConv3d` 가 실제로는 **`nn.Conv2d` 를 상속**한다. 시간 축을 squeeze 한 뒤 2D conv 만 수행하므로 이름만 3D.
+- 인코더 채널 96 → 96 → 192 → 384 → 768 → 768, 2배 다운샘플 4번 = **16배 압축**.
+- 디코더는 base 144 로 더 넓다 (79M vs 259M 비대칭).
+- **residual 경로**(`is_residual=True`): 블록마다 주 경로(ResBlock ×2 + 다운샘플)에 `AvgDown3D` 를 더한다. `AvgDown3D` = 2×2 픽셀을 채널로 접은 뒤 채널 그룹 평균을 내는 **파라미터 없는 지름길**. 2.0 리포트의 "non-parametric shortcut" 이 바로 이것.
+- 인코더 출력 128채널(평균 64 + 분산 64), 파이프라인은 샘플링 없이 **평균(mode)** 만 쓴다.
+
+```
+[1, 4, 1, 1024, 1024]  (RGBA, [-1,1])
+ → 인코더 → [1, 128, 1, 64, 64] → 평균만 사용 → [1, 64, 1, 64, 64]
+ → (z − latents_mean[c]) / latents_std[c]   ← 채널별 64개 상수 (config)
+ → pack: [1, 4096, 64]   (patch_size=1 → 64×64 칸을 그대로 펼침)
+```
+
+- ⚠️ **죽은 가중치**: 영상용 `time_conv` 12개(**6.75M, VAE 의 2%**)가 체크포인트에 들어 있다. 한 장짜리 이미지는 코드상 첫 청크 경로("Rep")만 타기 때문에 한 번도 쓰이지 않는다.
+
+#### ④ DiT 입력 조립 — 가장 헷갈리는 부분 (`transformer.forward` 앞부분)
+
+**① 입구 투영**
+- `img_in`: Linear 64 → 4096. 참조 잠재와 노이즈 잠재 모두 통과.
+- `txt_in`: VLM 출력에 적용 (ZeroCenter RMSNorm → Linear 4096 → GELU → Linear 4096).
+  - ZeroCenter RMSNorm = 가중치를 "scale − 1" 로 저장하고 계산할 때 +1 하는 RMSNorm.
+
+**② 타깃 자리 만들기** — 파이프라인이 `image_pad_mask` 끝에 **타깃 칸 4096/4 = 1024개**를 True 로 덧붙이고, Transformer 는 텍스트 끝에 0벡터 1024개를 붙인다.
+
+**③ 칸 1개 → 토큰 4개로 늘리고 덮어쓰기**
+
+```python
+repeats = torch.where(img_mask, 4, 1)[0]            # 이미지 칸만 ×4
+joint = cat([txt, zeros(1024)]).repeat_interleave(repeats)
+joint[:, image_pad_mask] = hidden_states           # 이미지 자리 = VAE 잠재(참조→타깃 순)
+```
+
+- VLM 이미지 칸 1개(32px) = VAE 토큰 2×2개(16px 네 개)와 정확히 대응.
+- **VLM 이 만든 이미지 칸 벡터는 여기서 버려진다.** VLM 이 이미지를 이해한 결과는 뒤따르는 지시문 토큰에만 남는다 (2.0 리포트 Fig 8 의 빨간 X).
+
+**완성된 시퀀스 (예시)**
+```
+[user 태그 ~5] [참조 이미지 4096] [vision_end + 지시문 ~30 + assistant 태그] [타깃 4096]
+ ←──────────── prefix ≈ 4.1K (텍스트 + 조건) ─────────────────→ ← target 4096 →
+                       총 약 8.2K 토큰 × 4096차원
+```
+
+**④ 3축 RoPE 좌표** (`QwenImage21Rope`, frame 16 + height 56 + width 56 = 128차원, theta 10000)
+
+| 토큰 | frame 축 | height·width 축 |
+|---|---|---|
+| 텍스트 | 1, 2, 3, … (한 칸씩 전진) | frame 과 같은 값 |
+| 이미지 블록 | 직전 텍스트 위치에 **고정** | **0 중심 격자** (예: −32 … 31) |
+| 이미지 다음 텍스트 | 이미지 블록 이후 max(h, w) 만큼 건너뛰고 이어짐 | frame 과 같은 값 |
+
+- 참조 이미지와 타깃이 **같은 공간 좌표를 공유** → "원본의 이 위치 = 결과의 이 위치"가 위치 인코딩 수준에서 맞춰진다.
+
+**⑤ 블록 id 와 타깃 마스크** (`build_token_metadata`): 텍스트 −1, 이미지마다 고유 번호, 마지막 블록 = 타깃 (→ Q6 ①).
+
+**⑥ 시간 조건**
+```
+t (0~1, 1 = 순수 노이즈)  ─┐
+t = 0 행 하나 추가  ────────┴→ ×1000 → sinusoid 256차원 (cos 먼저, sin 나중)
+   → Linear 256→4096 → SiLU → Linear 4096→4096 = temb [B+1, 4096]
+   → modulation: SiLU → Linear 4096→16384 = [scale1 | gate1 | scale2 | gate2]
+```
+
+- 타깃 토큰은 실제 t 행을, **텍스트와 참조 이미지 토큰은 t=0 행**을 읽는다 (`causal_condition`, → Q5).
+
+#### ⑤ Transformer block ×32 (전 층 동일, modulation 도 공유)
+
+```python
+# 모든 블록이 같은 modulation 텐서를 받음 (블록별 파라미터 없음)
+scale1, gate1, scale2, gate2 = modulation.chunk(4)   # 토큰 종류별로 t 행 또는 t=0 행 선택
+
+h = LayerNorm(x)                      # affine 없음
+h = h * (1 + scale1)                  # 곱셈만 (shift 없음)
+q, k, v = Wq·h, Wk·h, Wv·h            # 4096 → 32헤드 × 128, bias 없음
+q, k = RMSNorm(q), RMSNorm(k)         # 헤드별 QK-Norm
+q, k = RoPE(q), RoPE(k)
+a = Attention(q, k, v, mask = block-causal)
+x = x + tanh(gate1) * Wo·a
+
+h = LayerNorm(x) * (1 + scale2)
+x = x + tanh(gate2) * W_out( SiLU(W_gate·h) ⊙ W_proj·h )   # SwiGLU, 4096→12288→4096
+```
+
+**attention mask 규칙**: `(q 위치 ≥ kv 위치) 또는 (같은 이미지 블록)`, 그리고 padding 키 제외 (의미 → Q4, 코드 → Q6).
+
+| query \ key | 앞쪽 텍스트 | 참조 이미지 | 지시문 | 타깃 |
+|---|---|---|---|---|
+| 앞쪽 텍스트 | causal | ✗ | ✗ | ✗ |
+| 참조 이미지 | ✓ | **양방향** | ✗ | ✗ |
+| 지시문 | ✓ | ✓ | causal | ✗ |
+| 타깃 | ✓ | ✓ | ✓ | **양방향** |
+
+- 구현 두 가지:
+  - 기본 `QwenImage21AttnProcessor`: prefix 를 구간(segment)별로 나눠 SDPA 를 여러 번 호출. 정확하지만 느림.
+  - `QwenImage21FlexAttnProcessor`: flex_attention 의 BlockMask 로 한 번에 계산. **컴파일해야** 빠르고, 안 하면 fp32 점수 행렬을 통째로 만들어 고해상도에서 메모리 부족.
+
+**출구**: `norm_out`(LayerNorm × (1 + scale), scale 은 temb 에서 별도 Linear) → `proj_out` Linear 4096→64 → 토큰마다 velocity 64차원.
+
+#### ⑥ denoising loop — prefill 과 decode
+
+**스케줄 준비**
+- sigma = 1.0 부터 1/40 까지 40등분.
+- **토큰 수에 따른 shift**: mu = 0.5 + 0.4 × (타깃 토큰 수 − 256) / 7936
+  - 1024²(4,096 토큰) → mu ≈ 0.69
+  - 2048²(16,384 토큰) → mu ≈ 1.31. config 의 "max_shift 0.9 @ 8,192 토큰"을 넘어 **선형 외삽** (clamp 없음).
+- exponential shift 적용 후, 마지막 sigma 가 0.02 가 되도록 늘림 (`shift_terminal`).
+
+**루프**
+```
+step 0  (kv_mode="extract"):
+   시퀀스 8.2K 전체 계산 → 32층 각각 prefix(≈4.1K) K/V 복제·저장
+step 1~39 (kv_mode="cached"):
+   입력 = 타깃 4096 토큰만 → 층마다 K,V = [저장된 prefix K/V ; 타깃 K/V]
+   타깃 query 4096개가 prefix + 자기 블록 전체를 봄 (마스크 불필요)
+매 step:
+   v = 출력의 마지막 4096 토큰 (velocity)
+   latents ← latents + (σ_next − σ) × v      (Euler)
+   CFG: 기본 없음 (true_cfg_scale = 1.0 → 1 step = 1회 호출)
+```
+
+- prefix 는 t=0 으로 modulation 되고 마스크 때문에 타깃을 보지 못한다 → **첫 스텝의 K/V 가 39스텝 내내 정확히 유효**. 이것이 전체 설계의 핵심 (→ Q5).
+
+#### ⑦ decoding 과 후처리
+
+```
+latents [1, 4096, 64]
+ → unpack [1, 64, 1, 64, 64]
+ → × latents_std + latents_mean
+ → VAE 디코더 (post_quant_conv → mid → up ×4 (DupUp3D 지름길) → conv_out 4채널)
+ → clamp [-1, 1] → [0, 1] → PIL
+```
+
+- ⚠️ 출력은 **항상 4채널 → PIL `RGBA` 모드**. README 는 "투명일 때만 RGBA 로 저장"이라 하지만 불투명 이미지도 알파 ≈ 255 인 RGBA → `.save("x.jpg")` 는 **"cannot write mode RGBA as JPEG" 에러**. `.convert("RGB")` 를 거치거나 PNG 로 저장.
+
+#### ⑧ 한눈에 보는 텐서 모양 (참조 1장, 1024² → 1024²)
+
+| 단계 | 모양 |
+|---|---|
+| VLM 입력 토큰 (시스템 포함) | 약 1,080 (이미지 칸 1,024) |
+| VLM 출력 (시스템 제거 후) | [1, 약 1,060, 4096] |
+| 참조 VAE 잠재 | [1, 4096, 64] |
+| 노이즈 잠재 | [1, 4096, 64] |
+| DiT 결합 시퀀스 (step 0) | [1, 약 8,230, 4096] |
+| KV cache (층당) | K, V 각 [1, 약 4,130, 32, 128] → 32층 합계 약 2.2GB |
+| DiT 입력 (step 1~39) | [1, 4096, 4096] |
+| DiT 출력 | [1, 4096, 64] (velocity) |
+| 최종 이미지 | [1, 4, 1024, 1024] → RGBA PIL |
+
+T2I 라면 참조 이미지와 VLM 이미지 칸이 없어 prefix 는 텍스트 수십~수백 토큰뿐 → 캐시 효과는 거의 없고, 시퀀스는 거의 전부 타깃 토큰.
+
+> 한 줄: **"Qwen3-VL 이 지시문을 읽고(이미지 칸은 버림) → VAE 잠재를 그 빈자리에 끼워 한 줄로 만들고 → t=0 prefix 와 block-causal mask 덕분에 첫 스텝에서 조건을 한 번만 계산해 캐시한 뒤 → 32층 공유 modulation DiT 가 타깃 4096 토큰의 velocity 만 39번 더 계산해 Euler 로 내려가고 → f16c64 RGBA VAE 가 복원한다."** 코드에서 새로 발견한 것: VAE 의 죽은 `time_conv` 6.75M, **항상 RGBA 로 나오는 출력(JPEG 저장 에러)**, 2K 에서 shift 외삽.
+
+### Q4. block-causal ???
+
+*§4.2 그림과 Q3 ⑤ 에 규칙만 나오고 "왜 이런 모양인가"가 없어서, 규칙 자체를 처음부터 풀어 보는 질문.*
+
+**block-causal** = **"줄 단위로는 앞만 보고, 이미지 한 장 안에서는 전부 본다"** 는 attention 규칙. 익숙한 두 규칙을 섞은 것.
+
+**① 두 가지 기본 규칙**
+
+| 규칙 | 뜻 | 쓰는 곳 |
+|---|---|---|
+| **full attention** (양방향) | 모든 토큰이 모든 토큰을 봄 | 일반 DiT, Qwen-Image 1.x |
+| **causal attention** | 각 토큰이 **자기보다 앞**에 있는 토큰만 봄 | LLM (GPT, Qwen 등) |
+
+block-causal 은 이 둘을 섞는다.
+- **기본은 causal**: 시퀀스에서 앞에 있는 것만 본다.
+- **예외로 같은 블록 안은 full**: "블록" = 이미지 한 장. 한 장 안의 토큰끼리는 앞뒤 구분 없이 서로 다 본다.
+
+```python
+볼 수 있음 = (내 위치 >= 상대 위치) or (둘이 같은 이미지)
+```
+
+**② 작은 예시** — 시퀀스 `[텍스트 T1 T2] [참조 이미지 A1 A2] [지시문 T3] [타깃 이미지 G1 G2]`
+
+| 보는 쪽 ↓ \ 보이는 쪽 → | T1 | T2 | A1 | A2 | T3 | G1 | G2 |
+|---|---|---|---|---|---|---|---|
+| T1 | ✓ | | | | | | |
+| T2 | ✓ | ✓ | | | | | |
+| A1 | ✓ | ✓ | ✓ | **✓** | | | |
+| A2 | ✓ | ✓ | ✓ | ✓ | | | |
+| T3 | ✓ | ✓ | ✓ | ✓ | ✓ | | |
+| G1 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | **✓** |
+| G2 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+- 텍스트(T)는 계단 모양 — LLM 과 똑같이 앞만 본다.
+- **굵은 ✓** 가 예외: A1 은 순서상 뒤의 A2 도 본다 (같은 이미지).
+- 오른쪽 위는 전부 비어 있다 → **앞쪽 토큰은 뒤에 오는 타깃(G)을 절대 보지 못한다.**
+- 맨 아래 G 줄은 모든 칸이 참 → **타깃 입장에서는 full attention 과 똑같다.**
+
+비유: **책 읽기**. 앞 페이지는 다시 볼 수 있지만 아직 안 넘긴 뒤 페이지는 못 본다(causal). 다만 한 페이지에 그림이 있으면 그 그림은 한눈에 전체를 본다(블록 안 full).
+
+**③ 왜 이렇게 만들었나**
+
+- **이미지까지 전부 causal 이면?** 안 된다. 이미지 토큰에는 "먼저·나중"이라는 자연스러운 순서가 없다. 왼쪽 위 조각이 오른쪽 아래 조각을 못 보면 그림 전체가 어긋난다 → 이미지 한 장 안은 양방향.
+- **1.x 처럼 전부 full 이면?** 품질 면에선 문제없지만 **캐시가 불가능**해진다.
+  - 타깃(G)은 노이즈가 걷히면서 **매 스텝 값이 바뀐다**.
+  - full 이면 앞쪽 텍스트·참조 이미지도 G 를 보므로, G 가 바뀔 때마다 앞쪽 계산 결과도 달라진다 → 40스텝 내내 전부 재계산.
+  - block-causal 이면 앞쪽은 G 를 안 보므로 **앞쪽 계산 결과가 스텝마다 같다** → 첫 스텝에 한 번 계산해 저장(KV cache), 나머지 39스텝은 G 만 계산.
+- 여기에 조건 토큰을 **t=0 으로 고정**하는 설정(`causal_condition`)이 함께 들어간다. 마스크가 "G 를 못 보게", t=0 고정이 "노이즈 수준이 바뀌어도 영향받지 않게" 막는다. 둘 다 있어야 앞쪽 결과가 완전히 고정된다 (→ Q5).
+
+**④ 대가는?**
+- **타깃 품질 영향은 없다** — 타깃 줄은 full attention 과 똑같이 모든 것을 본다.
+- 달라지는 건 **앞쪽(조건) 토큰**. 1.x 에서는 참조 이미지가 타깃을 보며 서로 맞춰 갈 수 있었지만, 2.1 에서는 조건이 일방적으로 정보를 주기만 한다.
+- 이 차이가 품질을 얼마나 떨어뜨리는지는 **ablation 이 공개되지 않아 알 수 없다.**
+
+> 한 줄: **block-causal = LLM 처럼 앞만 보되 이미지 한 장 안에서는 서로 다 보는 규칙. 앞쪽 조건이 뒤쪽 타깃을 못 보게 막아서, 조건을 한 번만 계산하고 재사용(KV cache)할 수 있게 해 준다.**
+
+### Q5. causal_condition ?? prefix KV cache ?? — 이 3개는 뭐야?
+
+*block-causal · causal_condition · prefix KV cache 가 각각 따로 등장해 관계가 헷갈리므로, 셋을 한 세트로 묶어 푸는 질문.*
+
+세 가지는 따로 있는 기능이 아니라 **한 세트**다. 목표는 **prefix KV cache**(속도)이고, 나머지 둘은 그 캐시가 성립하기 위한 **전제 조건**.
+
+- **block-causal**: 앞쪽이 뒤쪽을 보지 않게 막음 (공간 쪽 조건)
+- **causal_condition**: 앞쪽이 스텝마다 흔들리지 않게 막음 (시간 쪽 조건)
+- **prefix KV cache**: 두 조건이 갖춰지면 앞쪽을 한 번만 계산하고 재사용
+
+#### ① prefix KV cache — 목표
+
+**KV 가 뭔가**
+- attention 에서 토큰마다 세 가지를 만든다.
+  - Q(query): 내가 무엇을 찾는지
+  - K(key): 나를 찾을 때 쓰는 색인
+  - V(value): 내가 건네줄 내용
+- 다른 토큰이 나를 참고할 때 쓰는 건 **내 K 와 V 뿐**.
+- 그래서 어떤 토큰의 K, V 가 변하지 않는다면 한 번 계산해 저장해 두고 다시 꺼내 쓰면 된다 = KV cache. LLM 이 다음 글자를 빠르게 뽑을 때 쓰는 방법과 같다.
+
+**prefix 가 뭔가** — 시퀀스의 **앞부분** [시스템 프롬프트 + 참조 이미지 + 지시문]. 뒷부분은 만들어 낼 **타깃 이미지**.
+
+**diffusion 에서의 기회**
+- 이미지 한 장을 만들려고 같은 DiT 를 **40번** 호출한다.
+- prefix 의 입력(지시문, 참조 이미지)은 40번 내내 **똑같다**. 바뀌는 건 노이즈가 걷히는 타깃뿐.
+- → prefix 의 K, V 를 첫 스텝에 저장해 두고, 나머지 39스텝은 타깃만 계산.
+
+```
+step 0   : [prefix + 타깃] 전부 계산 → 32층마다 prefix K/V 저장   ("extract")
+step 1~39: [타깃]만 계산 → K,V = [저장된 prefix K/V ; 타깃 K/V]    ("cached")
+```
+
+**문제**: 원래 DiT 에서는 입력이 같아도 prefix 의 K, V 가 스텝마다 **달라진다**. 이유가 두 가지이고, 각각을 나머지 두 장치가 막는다.
+
+#### ② 이유 1: prefix 가 타깃을 본다 → block-causal 이 막음
+
+- full attention(1.x)이면 prefix 토큰도 타깃 토큰을 본다.
+- 타깃은 매 스텝 바뀌므로, 그걸 본 prefix 의 계산 결과도 매번 바뀐다.
+- block-causal 은 **앞쪽이 뒤쪽을 못 보게** 막는다 (이미지 한 장 안만 예외) → prefix 는 타깃이 어떻게 변하든 영향 없음. 규칙 상세는 → Q4.
+
+#### ③ 이유 2: prefix 도 timestep 을 받는다 → causal_condition 이 막음
+
+**왜 문제인가** — DiT 의 모든 토큰은 블록마다 modulation 을 거친다.
+
+```
+h = LayerNorm(x) × (1 + scale(t))
+x = x + tanh(gate(t)) × Attention(h)
+```
+
+- scale 과 gate 는 **t(현재 노이즈 수준)로 계산**된다. t 는 스텝마다 1.0 → 0.02 로 줄어든다.
+- 마스크로 타깃을 못 보게 막아도, prefix 토큰이 **진짜 t 로 modulation 되면** 입력이 같아도 출력이 매번 달라진다 → 캐시 무효.
+
+**해결: 조건 토큰은 t 를 0 으로 고정**
+
+```python
+# transformer_qwenimage21.py
+timestep = torch.cat([timestep, timestep.new_zeros(1)])   # [진짜 t, 0] 두 행
+modulation = self.modulation(time_embed(timestep))        # modulation 도 두 벌
+
+# _select_modulation_rows
+타깃 토큰        → 진짜 t 행
+텍스트·참조 토큰 → t=0 행   (스텝이 바뀌어도 항상 같은 값)
+```
+
+- 이제 prefix 토큰의 modulation 은 40스텝 내내 **상수**. 출구의 `norm_out` 도 같은 방식으로 나뉜다.
+
+**왜 하필 0 인가**
+- 이 모델의 규약에서 t=1 은 순수 노이즈, **t=0 은 노이즈가 전혀 없는 깨끗한 상태**.
+- 참조 이미지 잠재는 실제로 노이즈를 섞지 않은 깨끗한 값이라 "t=0" 은 **사실 그대로의 라벨**.
+- 텍스트에는 노이즈 개념이 없으니 그냥 고정값 하나를 주는 것.
+
+**이름 주의**: `causal_condition` 이라는 이름과 달리 **마스크와는 상관이 없다.** 실제 내용은 "조건 토큰을 t=0 으로 modulation 한다"이고, docstring 도 "Modulate text and condition-image tokens from t = 0. Required for KV caching." 이라고 적혀 있다.
+
+**계보: 1.x Edit-2511 의 `zero_cond_t`**
+
+| | Edit-2511 (`zero_cond_t`) | 2.1 (`causal_condition`) |
+|---|---|---|
+| 참조 이미지 | t=0 | t=0 |
+| 텍스트 | **진짜 t** (텍스트 전용 가중치 `txt_mod` 가 따로 있음) | **t=0** |
+| attention | full (참조가 타깃을 봄) | block-causal |
+| 캐시 가능? | ✗ | ✓ |
+
+2511 에서는 "참조 이미지는 깨끗하니 t=0 으로 표시하자"라는 **품질 목적**의 장치였다. 2.1 은 이를 텍스트까지 넓히고 마스크를 더해 **속도 목적**(캐시)까지 달성했다.
+
+#### ④ 세 개 정리
+
+| 장치 | 무엇을 하나 | 막는 것 | 코드 |
+|---|---|---|---|
+| **block-causal** | 앞쪽은 뒤쪽을 못 보게 (이미지 한 장 안은 양방향) | 타깃 변화가 prefix 로 번지는 것 | `build_qwenimage21_block_causal_mask` |
+| **causal_condition** | 조건 토큰의 modulation 을 t=0 으로 고정 | 스텝(t) 변화가 prefix 를 흔드는 것 | `_select_modulation_rows` |
+| **prefix KV cache** | 첫 스텝에 prefix K/V 저장 → 이후 타깃만 계산 | (앞 두 장치 덕분에 성립) | `QwenImage21KVCache`, `kv_cache_mode` |
+
+- 코드도 이 의존관계를 강제한다: `causal_condition=False` 인데 캐시를 켜면 `ValueError`.
+
+**비유 (요리)**: 재료 손질(prefix)은 한 번만 해 두고, 굽기(타깃)만 40번 반복. 그러려면 두 가지가 보장돼야 한다.
+- 굽는 냄비 상태를 보고 재료 손질이 달라지면 안 된다 → block-causal
+- 불 세기(t)가 바뀔 때마다 손질한 재료가 변하면 안 된다 → causal_condition
+
+#### ⑤ 효과와 대가
+
+효과 수치(T2I 약 1%, 참조 1장 약 2배, 참조 10장 약 11배 / 캐시 메모리 약 22GB)는 → §6.
+
+**대가**: 조건 토큰이 타깃을 보면서 맞춰 갈 수 없고, 노이즈 수준에 따라 조건을 다르게 읽는 것도 불가능해진다. 이 제약이 품질에 주는 영향은 ablation 이 없어 알 수 없다.
+
+> 한 줄: **prefix KV cache = "조건은 40스텝 내내 같으니 한 번만 계산하자"는 목표. 그게 성립하려면 조건이 타깃을 안 봐야 하고(block-causal), 노이즈 수준에도 안 흔들려야 한다(causal_condition, 조건 토큰은 t=0 고정).**
+
+### Q6. "줄 단위로는 앞만 보고, 이미지 한 장 안에서는 전부 본다" — 이 의미와 매칭되는 실제 코드는?
+
+*Q4 의 말로 된 규칙이 코드 어디에 어떻게 박혀 있는지 줄 단위로 확인하려는 질문.*
+
+코드에서는 이 규칙이 **세 곳**에 구현돼 있다. 모두 diffusers 의 [transformer_qwenimage21.py](https://github.com/huggingface/diffusers/blob/main/src/diffusers/models/transformers/transformer_qwenimage21.py) 이고, 줄 번호는 2026-09 main 브랜치 기준.
+
+1. 토큰마다 "어느 이미지 소속인가" 번호 붙이기 (준비 단계)
+2. **flex 경로**: 규칙을 한 줄 식으로 직접 쓴 곳 → 의미가 가장 잘 보임
+3. **기본(SDPA) 경로**: 같은 규칙을 구간을 나눠 여러 번 계산하는 곳 → 실제로 기본값으로 도는 코드
+
+예시 시퀀스 하나로 끝까지 따라간다.
+
+```
+위치:      0  1 | 2  3  4  5 | 6 | 7  8  9  10
+토큰:      T  T | A  A  A  A | T | G  G  G  G
+           텍스트  참조 이미지   지시문  타깃 이미지
+```
+
+#### ① 준비: 토큰마다 소속 번호 붙이기 (`build_token_metadata`, 827~844줄)
+
+```python
+image_positions = image_pad_mask.nonzero(as_tuple=True)[0]      # 이미지 토큰 위치들
+block_lengths = [math.prod(shape) for shape in img_shapes]       # 이미지별 토큰 수 [4, 4]
+
+image_ids = torch.full_like(image_pad_mask, -1, dtype=torch.long)   # 전부 -1 (= 텍스트)로 시작
+block_ids = torch.repeat_interleave(
+    torch.arange(len(block_lengths)),                            # 0, 1, ...
+    torch.tensor(block_lengths),                                 # 각 이미지 길이만큼 반복
+)
+image_ids[image_positions] = block_ids                           # 이미지 자리에 0,0,0,0,1,1,1,1
+
+target_token_mask[image_positions[-block_lengths[-1]:]] = True   # 마지막 이미지 = 타깃
+```
+
+예시 적용 결과:
+
+```
+위치:      0   1 | 2  3  4  5 | 6  | 7  8  9  10
+image_ids: -1  -1 | 0  0  0  0 | -1 | 1  1  1  1
+```
+
+- **텍스트 = −1, 이미지 = 0, 1, 2, … (한 장마다 고유 번호)**. "이미지 한 장"을 가리는 기준이 이 번호.
+- 이미지 경계는 `True` 가 이어진 구간이 아니라 `img_shapes` 의 길이로 자른다. 코드 주석에 따르면, 참조 이미지 두 장이 사이에 텍스트 없이 붙어 있어도 **서로 다른 블록**으로 남게 하려는 것. 그렇지 않으면 두 장이 서로 양방향으로 보게 된다.
+
+#### ② flex 경로: 규칙이 그대로 적힌 곳 (`build_qwenimage21_block_causal_mask`, 291~296줄)
+
+```python
+def mask_mod(batch_idx, head_idx, q_idx, kv_idx):
+    is_padding = (q_idx >= seq_len) | (kv_idx >= seq_len)
+    q_image_id, kv_image_id = image_ids[q_idx], image_ids[kv_idx]
+    same_image_block = (q_image_id == kv_image_id) & (q_image_id >= 0)             # ← "이미지 한 장 안에서는 전부"
+    allowed = ((q_idx >= kv_idx) | same_image_block) & key_valid[batch_idx, kv_idx]
+    #          ^^^^^^^^^^^^^^^^^ ← "줄 단위로는 앞만"                ^^^^^^^^^ padding 키 제외
+    return allowed & ~is_padding
+```
+
+| 말 | 코드 조각 | 뜻 |
+|---|---|---|
+| 줄 단위로는 앞만 본다 | `q_idx >= kv_idx` | 나(q)보다 앞이거나 같은 위치의 토큰(kv)만 허용 |
+| 이미지 한 장 안에서는 전부 본다 | `q_image_id == kv_image_id` | 같은 이미지 번호면 위치 순서와 상관없이 허용 |
+| 단, 텍스트는 예외에서 제외 | `& (q_image_id >= 0)` | 텍스트끼리는 둘 다 −1 이라 "같은 번호"가 되는데, 이걸 막아서 텍스트는 순수 causal 로 남김 |
+| 둘 중 하나면 OK | `\|` (or) | 앞이거나 같은 이미지면 볼 수 있음 |
+| 빈칸은 안 봄 | `key_valid[...]` | 프롬프트 padding 자리는 키로 쓰지 않음 |
+
+**예시로 직접 계산해 보기**
+
+| 질문 | q → kv | `q>=kv` | 같은 이미지 | 결과 |
+|---|---|---|---|---|
+| 참조 첫 토큰이 참조 마지막 토큰을 보나? | 2 → 5 | ✗ | ✓ (0 == 0) | **봄** (한 장 안은 전부) |
+| 지시문이 참조 이미지를 보나? | 6 → 3 | ✓ | ✗ | **봄** (앞이니까) |
+| 첫 텍스트가 둘째 텍스트를 보나? | 0 → 1 | ✗ | ✗ (−1 이라 제외) | **못 봄** (텍스트는 causal) |
+| 참조 이미지가 타깃을 보나? | 4 → 8 | ✗ | ✗ (0 ≠ 1) | **못 봄** → 이게 캐시의 전제 |
+| 타깃이 지시문을 보나? | 9 → 6 | ✓ | ✗ | **봄** |
+| 타깃 첫 토큰이 타깃 마지막 토큰을 보나? | 7 → 10 | ✗ | ✓ (1 == 1) | **봄** |
+
+- 이 함수는 `create_block_mask` 에 넘겨져 flex_attention 한 번으로 계산된다.
+- **컴파일(`transformer.compile()`)을 해야 빠르다.** 안 하면 fp32 점수 행렬을 통째로 만들어 고해상도에서 메모리가 부족해진다고 코드가 경고한다.
+
+#### ③ 기본 경로: 같은 규칙을 구간별로 나눠 계산 (`QwenImage21AttnProcessor`)
+
+기본 processor 는 flex 를 쓰지 않는다. 대신 **prefix 를 "같은 번호가 이어진 구간(segment)"으로 잘라** 구간마다 SDPA 를 한 번씩 호출한다.
+
+**구간 자르기 (`_qwenimage21_prefix_segments`, 309~324줄)**
+
+```python
+prefix_ids = image_ids[:prefix_len].tolist()
+for index in range(1, prefix_len + 1):
+    if index == prefix_len or prefix_ids[index] != prefix_ids[start]:   # 번호가 바뀌는 곳에서 자름
+        segments.append((start, index, prefix_ids[start] < 0))           # (시작, 끝, 텍스트인가)
+        start = index
+```
+
+예시(prefix = 위치 0~6) 적용:
+
+```
+segments = [(0, 2, True),    # 텍스트 T T
+            (2, 6, False),   # 참조 이미지 A A A A
+            (6, 7, True)]    # 지시문 T
+```
+
+**구간별 attention (505~543줄)**
+
+```python
+for start, end, is_text in segments:
+    seg_mask = None
+    if is_text:
+        seg_len = end - start
+        seg_mask = torch.cat([
+            torch.ones(seg_len, start),              # ← 앞 구간 전부: "앞은 다 봄"
+            torch.tril(torch.ones(seg_len, seg_len)),# ← 자기 구간 안은 아래 삼각형: "텍스트는 줄 단위 causal"
+        ], dim=1)
+    outputs.append(dispatch_attention_fn(
+        query[:, start:end],                         # 이 구간의 query 만
+        key[:, :end], value[:, :end],                # key 는 처음부터 "이 구간 끝"까지
+        attn_mask=seg_mask, ...))
+
+outputs.append(dispatch_attention_fn(
+    query[:, prefix_len:],                           # 타깃 query
+    key, value,                                      # ← 전체 key, 마스크 없음 = 전부 봄
+    attn_mask=None if key_valid is None else key_valid[:, None, None, :], ...))
+```
+
+| 말 | 코드 조각 | 어떻게 구현되나 |
+|---|---|---|
+| 앞만 본다 | `key[:, :end]` | key 를 **이 구간 끝까지만** 잘라서 넘김 → 뒤쪽은 아예 안 들어감 |
+| 이미지 한 장 안에서는 전부 | 이미지 구간은 `seg_mask = None` | `:end` 가 자기 이미지 **끝까지** 포함 → 이미지 안 첫 토큰도 마지막 토큰까지 봄 |
+| 텍스트는 줄 단위 causal | `torch.tril(...)` | 텍스트 구간 안에서만 아래 삼각형 마스크를 추가 |
+| 타깃은 전부 본다 | `key` 전체, 마스크 없음 | 타깃이 맨 뒤이므로 "앞 전부 + 자기 블록 전부" = 시퀀스 전체 |
+
+예시로 보면:
+- 참조 구간(2~6)의 query 는 key 0~5 를 본다 — 앞 텍스트 두 개와 자기 이미지 네 개 전부, 뒤는 안 봄.
+- 지시문 구간(6~7)의 query 는 key 0~6 을 보되 자기 구간 안은 tril 적용.
+- 타깃(7~10)은 key 0~10 전부.
+
+flex 경로의 한 줄 식과 **결과는 똑같고** 계산 방식만 다르다. 코드 주석도 "exact but slower".
+
+#### ④ 캐시 단계: 타깃만 남으면 마스크가 사라짐 (953~962줄)
+
+```python
+if kv_cache_mode == "cached":
+    # decode: only the target image's queries are recomputed. The block-causal mask degenerates to full
+    # attention for target rows (they see the entire prefix + their own block), so only the padding mask is
+    # needed.
+    joint_hidden_states = joint_hidden_states[:, prefix_len:]    # 타깃 토큰만 입력
+    attention_mask = None if joint_key_valid is None else joint_key_valid[:, None, None, :]
+```
+
+- 2~39스텝의 query 는 타깃뿐. 타깃은 원래 **모든 것을 볼 수 있으므로** block-causal mask 가 필요 없어지고 padding 마스크만 남는다.
+- Q4 표에서 "맨 아래 타깃 줄은 전부 ✓" 였던 것이 코드에서는 이렇게 나타난다.
+
+> 한 줄: **`q_idx >= kv_idx` 가 "앞만 본다", `q_image_id == kv_image_id & q_image_id >= 0` 가 "같은 이미지 안은 전부 본다". 기본 경로는 같은 규칙을 "key 를 구간 끝까지만 자르고, 텍스트 구간에만 tril 마스크"로 구현한다. 캐시 단계에서는 타깃만 남아 마스크가 필요 없어진다.**
 
 ---
 
