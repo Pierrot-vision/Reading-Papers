@@ -58,7 +58,7 @@
 | 20 | [PRX (Photoroom eXperimental) — Open-source T2I Research](Diffusion/PAPER_PRX.md) | HF Blog 2026 | [blog](https://huggingface.co/blog/Photoroom/prx-open-source-t2i-model) | [github](https://github.com/Photoroom/PRX) | 2026-06-12 |
 | 19 | [DDT: Decoupled Diffusion Transformer](Diffusion/PAPER_DDT.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2504.05741) | [github](https://github.com/MCG-NJU/DDT) | 2026-06-10 |
 | 18 | [PixelDiT: Towards Pixel-Space Image Generation via Single-Stage Diffusion Transformer](Diffusion/PAPER_PixelDiT.md) | CVPR 2026 | [arxiv](https://arxiv.org/abs/2511.20645) | [github](https://github.com/NVlabs/PixelDiT) | 2026-06-10 |
-| 17 | [Qwen-Image-2.0 Technical Report](Diffusion/PAPER_Qwen-Image-2.0.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.10730) | [github](https://github.com/QwenLM/Qwen-Image) | 2026-06-04 |
+| 17 | [Qwen-Image-2.0 Technical Report](Diffusion/PAPER_Qwen-Image-2.0.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.10730) | [github](https://github.com/QwenLM/Qwen-Image) | 2026-09-23 |
 | 16 | [Qwen-Image Technical Report](Diffusion/PAPER_Qwen-Image.md) | arXiv 2025 | [arxiv](https://arxiv.org/abs/2508.02324) | [github](https://github.com/QwenLM/Qwen-Image) | 2026-07-23 |
 | 15 | [Nucleus-Image: Sparse MoE for Image Generation](Diffusion/PAPER_Nucleus-Image.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2604.12163) | - | 2026-06-02 |
 | 14 | [PiD: Fast and High-Resolution Latent Decoding with Pixel Diffusion](Diffusion/PAPER_PiD.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.23902) | [github](https://github.com/nv-tlabs/PiD) | 2026-06-19 |
@@ -94,7 +94,7 @@
 | 8 | [Tstars-Tryon 1.0: Industrial-Grade Virtual Try-On](Diffusion-Edit/PAPER_Tstars-Tryon.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2604.19748) | - | 2026-06-15 |
 | 7 | [UniRef-Image-Edit: Towards Scalable and Consistent Multi-Reference Image Editing](Diffusion-Edit/PAPER_UniRef-Image-Edit.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2602.14186) | - | 2026-06-10 |
 | 6 | [FireRed-Image-Edit-1.0 Technical Report](Diffusion-Edit/PAPER_FireRed-Image-Edit.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2602.13344) | [github](https://github.com/FireRedTeam/FireRed-Image-Edit) | 2026-06-10 |
-| 5 | [Qwen-Image-2.0 Technical Report](Diffusion/PAPER_Qwen-Image-2.0.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.10730) | [github](https://github.com/QwenLM/Qwen-Image) | 2026-06-04 |
+| 5 | [Qwen-Image-2.0 Technical Report](Diffusion/PAPER_Qwen-Image-2.0.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.10730) | [github](https://github.com/QwenLM/Qwen-Image) | 2026-09-23 |
 | 4 | [HiDream-O1-Image: A Natively Unified Image Generative Foundation Model with Pixel-level Unified Transformer](Diffusion-Native-Unified/PAPER_HiDream-O1-Image.md) | Tech Report 2026 | [pdf](https://github.com/HiDream-ai/HiDream-O1-Image/blob/main/assets/HiDream-O1-Image.pdf) | [github](https://github.com/HiDream-ai/HiDream-O1-Image) | 2026-06-02 |
 | 3 | [DreamLite: A Lightweight On-Device Unified Model for Image Generation and Editing](Diffusion/PAPER_DreamLite.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2603.28713) | [github](https://github.com/ByteVisionLab/DreamLite) | 2026-05-26 |
 | 2 | [UniCustom: Unified Visual Conditioning for Multi-Reference Image Generation](Diffusion/PAPER_UniCustom.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2605.12088) | - | 2026-05-27 |
