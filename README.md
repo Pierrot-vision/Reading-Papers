@@ -24,11 +24,11 @@
 
 ## 📰 News
 
+- **2026-10-16** — [RG](Diffusion/PAPER_RG.md) (Diffusion) · [EmbeddingGemma 2](VLM/PAPER_EmbeddingGemma-2.md) (VLM) 리뷰 추가
 - **2026-09-30** — [LocateAnything](VLM/PAPER_LocateAnything.md) (VLM, ECCV 2026) 리뷰 추가
 - **2026-09-23** — [Qwen-Image-2.1](Diffusion/PAPER_Qwen-Image-2.1.md) (Diffusion) 리뷰 추가 — 2.0의 첫 공개 구현 릴리스 분석
 - **2026-09-22** — [SAMformer](Forecasting/PAPER_SAMformer.md) (Forecasting, ICML 2024 Oral) 리뷰 추가
 - **2026-09-14** — [Scaffolding Minds](VLM/PAPER_Scaffolding-Minds.md) (VLM) · [TimesFM-3](Forecasting/PAPER_TimesFM-3.md) (Forecasting) 리뷰 추가
-- **2026-09-10** — 📂 `LLM` 챕터 신설: [MiniMind](LLM/PAPER_MiniMind.md) (교육용 밑바닥 LLM 학습 저장소) 리뷰 추가
 
 ---
 
@@ -42,6 +42,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 36 | [Learning Representations to Guide Pixel Diffusion Transformers](Diffusion/PAPER_RG.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2610.12978) | [github](https://github.com/Pan-Zihao/Representation-Guidance) | 2026-10-16 |
 | 35 | [Qwen-Image-2.1](Diffusion/PAPER_Qwen-Image-2.1.md) | Blog 2026 | [blog](https://qwen.ai/blog?id=qwen-image-2.1) | [github](https://github.com/QwenLM/Qwen-Image-2.1) | 2026-09-30 |
 | 34 | [LLaDA-Image: Building Strong Image Generators with Fully Open Training Recipes](Diffusion/PAPER_LLaDA-Image.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2609.03796) | [github](https://github.com/inclusionAI/LLaDA-Image) | 2026-09-08 |
 | 33 | [Mage-Flow: A 4B Image Generation and Editing Stack with Mage-VAE](Diffusion/PAPER_Mage-Flow.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2607.19064) | [github](https://github.com/microsoft/Mage) | 2026-07-29 |
@@ -124,6 +125,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 18 | [EmbeddingGemma 2](VLM/PAPER_EmbeddingGemma-2.md) | Blog 2026 | [blog](https://blog.google/innovation-and-ai/technology/developers-tools/embeddinggemma-2/) | [hf](https://huggingface.co/google/embeddinggemma-2) | 2026-10-16 |
 | 17 | [LocateAnything: Fast and High-Quality Vision-Language Grounding with Parallel Box Decoding](VLM/PAPER_LocateAnything.md) | ECCV 2026 | [paper](https://research.nvidia.com/labs/lpr/locate-anything/LocateAnything.pdf) | [github](https://github.com/NVlabs/Eagle/tree/main/Embodied) | 2026-09-30 |
 | 16 | [Scaffolding Minds: Optimizing Latent Visual Target Representations for Multimodal Reasoning](VLM/PAPER_Scaffolding-Minds.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2608.19669) | - | 2026-09-14 |
 | 15 | [Qwen2-VL: Enhancing Vision-Language Model's Perception of the World at Any Resolution](VLM/PAPER_Qwen2-VL.md) | arXiv 2024 | [arxiv](https://arxiv.org/abs/2409.12191) | [github](https://github.com/QwenLM/Qwen2-VL) | 2026-09-08 |
