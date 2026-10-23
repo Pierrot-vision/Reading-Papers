@@ -125,7 +125,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
-| 19 | [GroundAnything: Reconciling Parallel Decoding with Precise Visual Grounding at Flash Speed](VLM/PAPER_GroundAnything.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2609.39600) | [github](https://github.com/groundingpi/GroundAnything) | 2026-10-22 |
+| 19 | [GroundAnything: Reconciling Parallel Decoding with Precise Visual Grounding at Flash Speed](VLM/PAPER_GroundAnything.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2609.39600) | [github](https://github.com/groundingpi/GroundAnything) | 2026-10-23 |
 | 18 | [EmbeddingGemma 2](VLM/PAPER_EmbeddingGemma-2.md) | Blog 2026 | [blog](https://blog.google/innovation-and-ai/technology/developers-tools/embeddinggemma-2/) | [hf](https://huggingface.co/google/embeddinggemma-2) | 2026-10-16 |
 | 17 | [LocateAnything: Fast and High-Quality Vision-Language Grounding with Parallel Box Decoding](VLM/PAPER_LocateAnything.md) | ECCV 2026 | [paper](https://research.nvidia.com/labs/lpr/locate-anything/LocateAnything.pdf) | [github](https://github.com/NVlabs/Eagle/tree/main/Embodied) | 2026-09-30 |
 | 16 | [Scaffolding Minds: Optimizing Latent Visual Target Representations for Multimodal Reasoning](VLM/PAPER_Scaffolding-Minds.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2608.19669) | - | 2026-09-14 |
