@@ -24,11 +24,11 @@
 
 ## 📰 News
 
+- **2026-10-26** — [DiffusionOPD](Diffusion-Distillation/PAPER_DiffusionOPD.md) · [DanceOPD](Diffusion-Distillation/PAPER_DanceOPD.md) (Diffusion-Distillation, OPD 계열) 리뷰 추가
 - **2026-10-22** — [GroundAnything](VLM/PAPER_GroundAnything.md) (VLM) 리뷰 추가 — 블록 확산 grounding
 - **2026-10-16** — [RG](Diffusion/PAPER_RG.md) (Diffusion) · [EmbeddingGemma 2](VLM/PAPER_EmbeddingGemma-2.md) (VLM) 리뷰 추가
 - **2026-09-30** — [LocateAnything](VLM/PAPER_LocateAnything.md) (VLM, ECCV 2026) 리뷰 추가
 - **2026-09-23** — [Qwen-Image-2.1](Diffusion/PAPER_Qwen-Image-2.1.md) (Diffusion) 리뷰 추가 — 2.0의 첫 공개 구현 릴리스 분석
-- **2026-09-22** — [SAMformer](Forecasting/PAPER_SAMformer.md) (Forecasting, ICML 2024 Oral) 리뷰 추가
 
 ---
 
@@ -112,6 +112,8 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 4 | [DanceOPD: On-Policy Generative Field Distillation](Diffusion-Distillation/PAPER_DanceOPD.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.27377) | [github](https://github.com/worldbench/DanceOPD) | 2026-10-26 |
+| 3 | [DiffusionOPD: A Unified Perspective of On-Policy Distillation in Diffusion Models](Diffusion-Distillation/PAPER_DiffusionOPD.md) | SIGGRAPH Asia 2026 | [arxiv](https://arxiv.org/abs/2605.15055) | - | 2026-10-26 |
 | 2 | [Improved Distribution Matching Distillation for Fast Image Synthesis](Diffusion-Distillation/PAPER_DMD2.md) | NeurIPS 2024 | [arxiv](https://arxiv.org/abs/2405.14867) | [github](https://github.com/tianweiy/dmd2) | 2026-05-22 |
 | 1 | [One-step Diffusion with Distribution Matching Distillation](Diffusion-Distillation/PAPER_DMD.md) | CVPR 2024 | [arxiv](https://arxiv.org/abs/2311.18828) | - | 2026-05-22 |
 
@@ -125,7 +127,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
-| 19 | [GroundAnything: Reconciling Parallel Decoding with Precise Visual Grounding at Flash Speed](VLM/PAPER_GroundAnything.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2609.39600) | [github](https://github.com/groundingpi/GroundAnything) | 2026-10-23 |
+| 19 | [GroundAnything: Reconciling Parallel Decoding with Precise Visual Grounding at Flash Speed](VLM/PAPER_GroundAnything.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2609.39600) | [github](https://github.com/groundingpi/GroundAnything) | 2026-10-26 |
 | 18 | [EmbeddingGemma 2](VLM/PAPER_EmbeddingGemma-2.md) | Blog 2026 | [blog](https://blog.google/innovation-and-ai/technology/developers-tools/embeddinggemma-2/) | [hf](https://huggingface.co/google/embeddinggemma-2) | 2026-10-16 |
 | 17 | [LocateAnything: Fast and High-Quality Vision-Language Grounding with Parallel Box Decoding](VLM/PAPER_LocateAnything.md) | ECCV 2026 | [paper](https://research.nvidia.com/labs/lpr/locate-anything/LocateAnything.pdf) | [github](https://github.com/NVlabs/Eagle/tree/main/Embodied) | 2026-09-30 |
 | 16 | [Scaffolding Minds: Optimizing Latent Visual Target Representations for Multimodal Reasoning](VLM/PAPER_Scaffolding-Minds.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2608.19669) | - | 2026-09-14 |
