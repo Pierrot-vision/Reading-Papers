@@ -24,7 +24,7 @@
 
 ## 📰 News
 
-- **2026-10-26** — [DiffusionOPD](Diffusion-Distillation/PAPER_DiffusionOPD.md) · [DanceOPD](Diffusion-Distillation/PAPER_DanceOPD.md) (Diffusion-Distillation, OPD 계열) 리뷰 추가
+- **2026-10-26** — [DiffusionOPD](Diffusion-Distillation/PAPER_DiffusionOPD.md) · [DanceOPD](Diffusion-Distillation/PAPER_DanceOPD.md) · [ArcFlow](Diffusion-Distillation/PAPER_ArcFlow.md) · [PVD](Diffusion-Distillation/PAPER_PVD.md) (Diffusion-Distillation) 리뷰 추가
 - **2026-10-22** — [GroundAnything](VLM/PAPER_GroundAnything.md) (VLM) 리뷰 추가 — 블록 확산 grounding
 - **2026-10-16** — [RG](Diffusion/PAPER_RG.md) (Diffusion) · [EmbeddingGemma 2](VLM/PAPER_EmbeddingGemma-2.md) (VLM) 리뷰 추가
 - **2026-09-30** — [LocateAnything](VLM/PAPER_LocateAnything.md) (VLM, ECCV 2026) 리뷰 추가
@@ -112,6 +112,8 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 6 | [Two Halves are More than One: Phase-wise Velocity Distillation for Fast and High-Quality Image Generation](Diffusion-Distillation/PAPER_PVD.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2610.08070) | [github](https://github.com/PolyU-VCLab/PVD) | 2026-10-26 |
+| 5 | [ArcFlow: Unleashing 2-Step Text-to-Image Generation via High-Precision Non-Linear Flow Distillation](Diffusion-Distillation/PAPER_ArcFlow.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2602.09014) | [github](https://github.com/pnotp/ArcFlow) | 2026-10-26 |
 | 4 | [DanceOPD: On-Policy Generative Field Distillation](Diffusion-Distillation/PAPER_DanceOPD.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.27377) | [github](https://github.com/worldbench/DanceOPD) | 2026-10-26 |
 | 3 | [DiffusionOPD: A Unified Perspective of On-Policy Distillation in Diffusion Models](Diffusion-Distillation/PAPER_DiffusionOPD.md) | SIGGRAPH Asia 2026 | [arxiv](https://arxiv.org/abs/2605.15055) | - | 2026-10-26 |
 | 2 | [Improved Distribution Matching Distillation for Fast Image Synthesis](Diffusion-Distillation/PAPER_DMD2.md) | NeurIPS 2024 | [arxiv](https://arxiv.org/abs/2405.14867) | [github](https://github.com/tianweiy/dmd2) | 2026-05-22 |
