@@ -193,6 +193,21 @@
 > 이 장을 두는 이유: 논문 서술만으로는 모호했던 "t′=t", "파라미터 수", "전문가 독립 학습"을 실제 코드로 확인하고, 학습 전체 흐름을 한 장의 그림으로 잡기 위해서.
 > 정독 범위: `losses/c2i.py`, `losses/flux.py`, `ldit/lightningdit.py`, `infer.py`, `pipelines/c2i.py`·`flux.py`(pvd_infer), `scripts/train_t2i.sh`, `train.py` 일부. SD3.5/Qwen-Image 스크립트는 훑기만 함. 저장소는 커밋 1개(README 갱신)뿐.
 
+### 7.0 전체 학습 네트워크 flow 그림
+
+> 이 소절을 두는 이유: 아래 7.1~7.4의 텍스트 도식을 읽기 전에 그림 한 장으로 전체 흐름을 먼저 잡기 위해서.
+
+**그림 1. T2I(FLUX.1-dev) 전체 학습·추론 flow** — Stage 0(반 깊이 백본) → 구간별 독립 학습(LoRA) → 학습 한 스텝(FM·CM·ADV 손실) → 추론
+
+![PVD T2I 전체 flow](figures/PVD_fig1.png)
+
+**그림 2. C2I(ImageNet) 학습·추론 flow** — 28블록을 14+14로 쪼갠 학생, 두 전문가를 한 스텝에서 같이 학습
+
+![PVD C2I 전체 flow](figures/PVD_fig2.png)
+
+- 색 구분: 파랑=데이터/입출력, 회색=동결된 교사, 주황=구간 1(구도) 전문가, 초록=구간 2(디테일) 전문가, 빨강=손실, 보라=판별기(GAN), 노랑=요약/설명.
+- 두 그림은 코드(`losses/c2i.py`, `losses/flux.py`, `ldit/lightningdit.py`, `pipelines/flux.py`)를 정독해서 그렸다. SD3.5와 Qwen-Image는 FLUX와 같은 골격이고 교사 호출(SD3.5는 CFG 2회)과 LoRA 설정만 다르다고 보지만, 스크립트 전체를 정독하지는 않았다.
+
 ### 7.1 전체 파이프라인 한눈에 (T2I 기준)
 
 ```
