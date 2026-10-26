@@ -385,22 +385,24 @@
 - teacher를 별도 사본으로 두지 않고 LoRA 스케일 0/1 토글로 공유하는 것은 이 메모리 때문으로 보인다(추정).
 - train_8steps_large.sh는 GPU마다 독립된 1장짜리 학습 8개를 띄운다(CUDA_VISIBLE_DEVICES 지정). 각 GPU 한 장에 위 구성이 올라가야 하므로 40~80GB급을 가정한 것으로 보인다(추정).
 
-### Q5. DPO를 이용한 Turbo 공개 모델이 있나?
-*이 절을 두는 이유: few-step 모델에 선호 정렬을 어떻게 얹는지, 공개 가중치로 확인되는 선례가 있는지 가려 두면 OPD 계열과의 위치를 판단하기 쉽다.*
+### Q5. OPD를 이용한 Turbo(few-step) 공개 모델이 있나?
+*이 절을 두는 이유: OPD가 few-step 증류에 실제로 쓰였는지, 쓰였다면 공개 가중치로 확인되는지 가려 두면 DiffSynth 스크립트의 위치를 판단하기 쉽다.*
 
-검색 스니펫 기반이라 모델 카드로 직접 확인한 것은 아니다. 결론: **"DPO로 학습한 공식 Turbo 공개 모델"은 확인하지 못했다.**
+검색 결과 + 논문 초록 기반이며 모델 카드·가중치를 직접 열어 확인한 것은 아니다. 결론: **"OPD로 스텝을 줄여 만든 Turbo 공개 가중치"는 확인하지 못했다.** 확인된 것은 학습 코드와 인접 연구다.
 
-| 모델 | DPO와의 관계 | 비고 |
-|---|---|---|
-| [Z-Image-Turbo](https://www.emergentmind.com/topics/z-image-turbo) | 증류에 RL 보상 최적화를 결합했지만 DPO가 아니라 DMDR 방식 | 가장 근접한 공개 Turbo. 메모리 [[paper_z_image]]에 "Decoupled DMD + DMDR + 2-stage RLHF" |
-| [thibaud/sdxl_dpo_turbo](https://huggingface.co/thibaud/sdxl_dpo_turbo/commits/refs%2Fpr%2F4/text_encoder_2/config.json) | SDXL-Turbo와 SDXL-DPO 가중치를 **병합**한 커뮤니티 모델 | 학습이 아니라 merge. 라이선스 "other" |
-| [Qwen-Image-2.1-viggle-turbo](https://huggingface.co/Viggle/Qwen-Image-2.1-viggle-turbo) | 6스텝·CFG 없는 증류 LoRA. DPO 언급 없음 | 본 문서 스크립트와 같은 계열의 Turbo |
-| [Diffusion-DPO류 학술 실험](https://arxiv.org/pdf/2411.11727) | SD-Turbo 위 few-step 보상 미세조정(D3PO 비교 포함) | 논문 실험, 공개 Turbo 모델 아님 |
+| 대상 | OPD와의 관계 | 공개 여부 | few-step 증류인가 |
+|---|---|---|---|
+| DiffSynth OPD 예제 (FLUX.2-klein-base-4B, Qwen-Image-2.1, MOSS-Image: 50→8스텝 / Qwen-Image-2.1-Turbo: 8→3스텝) | 본 문서 스크립트의 계열. 공식 문서가 OPD를 증류 가속 학습으로 권장 | **학습·검증 코드만** 확인. 학습된 LoRA 가중치 공개는 미확인 | 예 (스텝·CFG 감축) |
+| [DiffusionOPD 원논문 가중치 (quanhaol/DiffusionOPD)](https://huggingface.co/quanhaol/DiffusionOPD) | 본 논문 | SD3.5-M 위 LoRA(통합 학생 + Aes/GenEval/OCR teacher). 학술 연구 목적만 허용 | **아니오** (Turbo 아님) |
+| [DiffusionOPSD (on-policy self-distillation)](https://github.com/worldbench/DiffusionOPSD) | 이름은 OPSD. SD3.5-M과 **Z-Image-Turbo**에서 실험, Z-Image-Turbo에서 DiffusionNFT 대비 학습 GPU시간 63% 절감 주장 | LoRA [WeiChow/DiffusionOPSD](https://huggingface.co/WeiChow/DiffusionOPSD) + 코드 공개 | **아니오.** 이미 Turbo인 모델을 보상 정렬하는 쪽(스텝 축소가 아님) |
+| [DanceOPD (2606.27377, ByteDance Seed)](https://arxiv.org/abs/2606.27377) | 저노이즈 상태 + 속도 MSE로 능력 필드를 증류. 초록이 **CFG 흡수(CFG absorption)**를 언급. DiffSynth 문서가 인용한 변형 | 코드 링크는 있으나 가중치 공개는 초록에서 미확인 | 스텝 수는 초록에 없음 (CFG 증류 성격은 있음) |
+| [D-OPSD (2605.05204)](https://arxiv.org/abs/2605.05204) | step-distilled 모델(Z-Image-Turbo, FLUX.2-klein 언급)을 **스텝 능력을 잃지 않고** 계속 미세조정 | 가중치 공개 미확인 | 아니오 (이미 few-step인 모델의 후속 튜닝) |
 
-참고: DPO를 쓰는 공개 모델 중 Turbo가 아닌 것은 LongCat-Image(DPO·GRPO·MPO 3단 RLHF, [[paper_longcat_image]]).
-→ 증류 후 정렬은 대체로 DMD 계열 보상 최적화나 GRPO이고, DPO를 증류된 few-step 모델에 직접 적용한 공식 가중치는 찾지 못했다.
+- 그 밖에 후보로 보이는 [Poly-OPD (2608.04349)](https://huggingface.co/papers/2608.04349)(다중 teacher OPD로 능력 선택형 flow 모델)는 내용을 열어 보지 못했다.
+- 정리: OPD는 few-step 증류에 쓰일 수 있고 DiffSynth가 그 용도의 학습 코드를 제공하지만, 그 결과물인 Turbo 가중치가 공개돼 있다는 근거는 이번 검색에서 못 찾았다. 반대로 공개 가중치가 있는 OPD 계열(DiffusionOPD, DiffusionOPSD)은 few-step 증류 결과물이 아니다.
+- Qwen-Image-2.1-Turbo가 어떤 방식으로 만들어졌는지는 확인하지 못했다(DiffSynth 예제는 이 Turbo를 베이스로 8→3스텝을 추가 증류하는 레시피).
 
-### Q6. FLUX 계열 few-step 공개 모델은? (DPO 아니어도)
+### Q6. FLUX 계열 few-step 공개 모델은? (OPD 이외 방식 포함)
 *이 절을 두는 이유: 본 문서의 OPD 스크립트와 비교할 FLUX 쪽 증류 선례를 한곳에 모아 둔다.*
 
 검색 결과와 기존 지식을 섞었고, 출처 없는 항목은 "미확인"으로 표시했다.
@@ -414,13 +416,14 @@
 | [π-Flow](https://github.com/lakonik/piflow) | 정책 기반 모방 증류 | 4 | DMD류보다 다양성이 높고 teacher급 품질 유지. ComfyUI 지원 |
 | [fal/FLUX.2-dev-Turbo](https://huggingface.co/fal/FLUX.2-dev-Turbo) | LoRA | 8 | FLUX [dev] 비상업 라이선스 |
 | FLUX.2 klein | 4스텝 모델 | 4 | 학습 방식 미확인 |
+| FLUX.2-klein-base-4B + DiffSynth OPD | **OPD** 증류(LoRA·Full 레시피) | 50→8 | 학습·검증 코드만 확인, 학습된 가중치 공개는 미확인(Q5 참조) |
 | [TwinFlow](https://arxiv.org/html/2610.08070), [ArcFlow](https://arxiv.org/pdf/2602.09014) | 최신 증류 방법 | 1~2 | FLUX용 공개 가중치 여부 미확인 |
 
 - 정렬 방식은 대부분 적대적 학습이나 DMD 분포 매칭. RL이 들어간 확인 사례는 Hyper-FLUX.
 - 위 점수는 서로 다른 논문의 지표·스텝 수·프로토콜이라 직접 비교 불가. TwinFlow 표는 SenseFlow와 π-Flow 행이 중복돼 신뢰도가 낮다고 검색 결과에도 적혀 있다.
 - DMD류는 대규모 flow 모델에서 수렴·다양성 문제가 보고되며, SenseFlow는 판별기로 보완하고 π-Flow는 다양성을 장점으로 내세운다.
 - **본 문서 스크립트와 가장 가까운 것은 π-Flow**(둘 다 점별 감독으로 teacher 궤적을 따라가는 imitation 계열). 이 가까움은 추정.
-- 관련해 [D-OPSD](https://arxiv.org/pdf/2605.05204)는 step-distilled 모델을 on-policy self-distillation으로 계속 튜닝하는 논문으로 DiffusionOPD와 문제의식이 겹친다(아직 읽지 않음).
+- OPD 계열과의 관계는 Q5 표 참조. 특히 [D-OPSD](https://arxiv.org/abs/2605.05204)는 초록 기준으로 FLUX.2-klein·Z-Image-Turbo 같은 step-distilled 모델을 스텝 능력을 잃지 않고 후속 튜닝하는 연구라, few-step 증류 자체와는 다른 목적이다(본문은 읽지 않음).
 
 ---
 
