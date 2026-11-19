@@ -33,8 +33,8 @@
 - 논문의 주장: 그러면 final output이 이미 완벽해도 "intermediate prediction이 다르다"는 이유로 엉뚱한 교정이 계속되거나, 반대로 final output이 틀렸는데 교정이 멈춘다. 이걸 수학으로 증명하고, fake를 final output만으로 학습시키는 방법(eDMD)을 제안한다.
 - 덤으로 teacher 예측을 다듬는 장치 두 개를 더한다: precise teacher(PT)와 calibrated query density(Q).
 
-### 비유
-그림 학원에서 학생 실력을 평가관(fake)이 판단한다. 평가관이 학생의 "최종 제출작"이 아니라 "연습장 + 제출작" 묶음을 보고 실력을 판단하면, 제출작이 만점이어도 "연습장이 지저분하다"며 계속 고치라고 한다. eDMD는 평가관에게 제출작만 보게 한다.
+### 핵심 메커니즘
+fake model은 student 출력 분포를 학습해 teacher 예측과 비교할 기준이 된다. DMD2·TDM처럼 fake를 intermediate prediction까지 섞어 학습하면, final output이 이미 teacher 분포와 같아도 correction이 0이 되지 않는다. eDMD는 fake를 final output만으로 학습해, final output이 teacher 분포와 같아지는 순간 correction이 정확히 0이 되게 한다.
 
 ### 새 모델이 아니라 학습법
 - 구조는 바꾸지 않는다. 학생 = 교사 + LoRA rank 32. 추론은 4스텝 Euler 샘플링.
@@ -193,7 +193,7 @@ D_a − D_b = τ²/(1−τ) · ∇_y log( a_τ / b_τ )
 ```
 말로 풀면: 학생 출력 x̂에 노이즈를 섞어 y를 만들고, "teacher 예측 Dp(y) − student 분포의 예측 Dq(y)" 방향으로 x̂를 옮겨라. 앞의 `(1−τ)²/τ²`는 SNR이라 항상 양수이고, 방향은 그대로 두고 세기만 조절한다.
 
-> 비유: 흐린 사진을 두 감정사에게 보여준다. 진짜 감정사는 "원래 털이 살아 있는 여우였겠네", 학생 감정사는 "학생 그림이면 털이 뭉개진 여우였겠지"라고 한다. 그 차이가 "털을 살려라"라는 지시다.
+> 직접 설명: 같은 noisy sample y에 대해 teacher는 teacher 분포 기준 예측 Dp(y)를, fake는 student 분포 기준 예측 Dq(y)를 낸다. 둘의 차이 Dp − Dq가 "student 출력을 teacher 분포 쪽으로 옮기려면 어느 방향으로 바꿔야 하는가"이다.
 
 student 분포의 denoiser Dq는 알 수 없으므로 fake F를 student 출력으로 실시간 학습해 대신한다. 그래서 교정은
 ```
@@ -238,7 +238,7 @@ C = (A − Dp)  +  (Dp − Dq)  +  (Dq − Dν)
 | Dp − Dq | endpoint matching | teacher 분포와 student final output 분포의 차이 (= 식 1의 방향) | **진짜 목표** |
 | Dq − Dν | reference residual R | fake가 final output이 아닌 것을 배워서 생긴 힘 | 불필요 |
 
-0-1절의 평가관 비유에서 "연습장이 지저분하다"는 지적이 바로 R이다.
+즉 R은 final output이 이미 teacher 분포와 같아도, fake가 intermediate prediction까지 학습했다는 이유만으로 남는 correction이다.
 
 ### 4.5 명제 1 (식 4): 잔차의 정체와 0이 되는 유일한 조건
 
@@ -381,7 +381,7 @@ B = T + γ·(T − T⁻)
 
 **문제**: 한 번의 denoiser 호출은 "가능한 답들의 평균"이다. 정답 후보가 두 갈래면 평균은 두 갈래 사이의 빈 곳에 떨어지고, 그림으로는 흐릿함이 된다.
 
-> 비유: 갈림길 앞에서 "평균 목적지"를 한 번에 찍으면 두 길 사이 숲속에 떨어진다. 네 걸음으로 나눠 걸으면 어느 한 갈래 위에 도착한다.
+> 직접 설명: 정답 후보가 두 mode(갈래)로 나뉘면 single-step prediction은 두 mode의 평균, 즉 어느 mode에도 속하지 않는 지점을 낸다. ODE를 여러 스텝으로 적분하면 그 과정에서 한쪽 mode로 정해져 해당 mode 위의 샘플에 도달한다.
 
 **식 10**:
 ```
@@ -454,7 +454,7 @@ v̂k = Gθ(zk, σk),    x̂k = zk − σk·v̂k,    z_{k+1} = zk + (σ_{k+1} −
    φ는 Ỹτ의 함수라서 정상적인 averaging 부분은 φ와 직교해 내적에서 빠진다. 그래서 코시-슈바르츠 부등식으로 **"drift가 적어도 이만큼은 있다"는 하한**이 된다: `b̂_s(τ) ≤ E‖T^w(Ỹτ,τ) − m_{s,τ}‖² / err_s`.
 5. 밀도 ρ는 exp(−b̂)에 비례: b̂가 1 늘 때마다 뽑힐 확률이 약 1/2.7배.
 
-> 비유: 같은 질문에 증언이 오락가락하는 증인에게는 덜 묻는다.
+> 직접 설명: drift b̂가 큰 노이즈 레벨일수록 teacher 예측이 레벨 간 일관되지 않으므로, 그 레벨의 query는 덜 뽑는다.
 
 측정은 landing level마다 학습 프롬프트 256개 × 노이즈 짝 2개, s 위의 레벨 13개. 학습 전 교사·격자마다 1회만(SD3 5.4분, FLUX 4B 15.8분, 9B 33.7분). 학습 중에는 선형 보간 + 역CDF 샘플링이라 교사 호출이 추가되지 않는다.
 
@@ -857,7 +857,7 @@ DMD2 칸은 두 가지를 구분해서 적었다. eDMD 논문이 비교에 쓴 D
 #### 한 문장 요약
 교정 신호에서 "엉뚱한 성분(reference residual R)"이 정확히 0이 된다. 그래서 학생을 미는 힘이 "최종 출력을 교사에 맞춰라"라는 진짜 목표 하나만 담게 되고, 아래 이점들이 모두 여기서 나온다.
 
-> 평가관이 제출작만 보면 세 가지가 달라진다. 제출작이 만점일 때 정확히 지적을 멈추고, 연습장을 어떻게 쓰든 간섭하지 않고, 연습장 버릇만 다른 두 학생에게 같은 피드백을 준다.
+> 직접 설명: endpoint reference를 쓰면 (1) final output이 teacher 분포와 같아질 때 정확히 correction이 멈추고, (2) intermediate prediction의 형태에는 제약을 걸지 않으며, (3) final output이 같은 student들은 intermediate prediction의 bias와 무관하게 같은 correction을 받는다.
 
 #### 이점 6가지
 
