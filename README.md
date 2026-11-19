@@ -24,9 +24,9 @@
 
 ## 📰 News
 
+- **2026-11-19** — [eDMD](Diffusion-Distillation/PAPER_eDMD.md) (Diffusion-Distillation) 리뷰 추가 — 끝점 분포 매칭 few-step 증류
 - **2026-10-26** — [DiffusionOPD](Diffusion-Distillation/PAPER_DiffusionOPD.md) · [DanceOPD](Diffusion-Distillation/PAPER_DanceOPD.md) · [ArcFlow](Diffusion-Distillation/PAPER_ArcFlow.md) · [PVD](Diffusion-Distillation/PAPER_PVD.md) (Diffusion-Distillation) 리뷰 추가
 - **2026-10-22** — [GroundAnything](VLM/PAPER_GroundAnything.md) (VLM) 리뷰 추가 — 블록 확산 grounding
-- **2026-10-16** — [RG](Diffusion/PAPER_RG.md) (Diffusion) · [EmbeddingGemma 2](VLM/PAPER_EmbeddingGemma-2.md) (VLM) 리뷰 추가
 - **2026-09-30** — [LocateAnything](VLM/PAPER_LocateAnything.md) (VLM, ECCV 2026) 리뷰 추가
 - **2026-09-23** — [Qwen-Image-2.1](Diffusion/PAPER_Qwen-Image-2.1.md) (Diffusion) 리뷰 추가 — 2.0의 첫 공개 구현 릴리스 분석
 
@@ -112,6 +112,7 @@
 
 | No | Title | Venue | Paper | Code | Updated |
 |---|---|---|---|---|---|
+| 7 | [eDMD: Endpoint Distribution Matching for Few-Step Diffusion Distillation](Diffusion-Distillation/PAPER_eDMD.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2611.17194) | [github](https://github.com/Westlake-AGI-Lab/eDMD) | 2026-11-19 |
 | 6 | [Two Halves are More than One: Phase-wise Velocity Distillation for Fast and High-Quality Image Generation](Diffusion-Distillation/PAPER_PVD.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2610.08070) | [github](https://github.com/PolyU-VCLab/PVD) | 2026-10-27 |
 | 5 | [ArcFlow: Unleashing 2-Step Text-to-Image Generation via High-Precision Non-Linear Flow Distillation](Diffusion-Distillation/PAPER_ArcFlow.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2602.09014) | [github](https://github.com/pnotp/ArcFlow) | 2026-10-26 |
 | 4 | [DanceOPD: On-Policy Generative Field Distillation](Diffusion-Distillation/PAPER_DanceOPD.md) | arXiv 2026 | [arxiv](https://arxiv.org/abs/2606.27377) | [github](https://github.com/worldbench/DanceOPD) | 2026-10-26 |
